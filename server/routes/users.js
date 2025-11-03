@@ -20,6 +20,11 @@ router.get('/my-books', UserController.getMyBooks);
 // GET /api/users/my-fines
 router.get('/my-fines', UserController.getMyFines);
 
+// Get current user's profile (for profile screen)
+// GET /api/users/profile
+router.get('/profile', UserController.getUserProfile);
+
+
 // ============================================
 // ADMIN ROUTES
 // ============================================

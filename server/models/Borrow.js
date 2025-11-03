@@ -25,6 +25,20 @@ class Borrow {
     return borrows;
   }
 
+  // Get user's borrow history
+  static async findHistoryByUserId(user_id) {
+    const [history] = await db.query(
+      `SELECT b.id, b.book_id, b.borrowed_date, b.returned_date, 
+              bk.title, bk.author, bk.cover_image_url
+       FROM borrows b
+       JOIN books bk ON b.book_id = bk.id
+       WHERE b.user_id = ? AND b.status = 'returned'
+       ORDER BY b.returned_date DESC`,
+      [user_id]
+    );
+    return history;
+  }
+
   // Mark as returned
   static async return(id) {
     const [result] = await db.query(

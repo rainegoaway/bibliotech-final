@@ -90,6 +90,9 @@ export const usersAPI = {
   
   getMyFines: () => 
     api.get('/users/my-fines'),
+
+  getUserProfile: () =>
+    api.get('/users/profile'),
 };
 
 // Genres API
@@ -140,6 +143,9 @@ export const borrowsAPI = {
   // Get user's reservations
   getMyReservations: () =>
     api.get('/borrows/my-reservations'),
+
+  getBorrowHistory: () =>
+    api.get('/borrows/history'),
   
   // Reserve a book
   reserveBook: (bookId: number) =>

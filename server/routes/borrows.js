@@ -52,6 +52,10 @@ router.post('/reserve', BorrowController.reserveBook);
 // GET /api/borrows/my-reservations
 router.get('/my-reservations', BorrowController.getMyReservations);
 
+// Get current user's borrow history
+// GET /api/borrows/history
+router.get('/history', BorrowController.getBorrowHistory);
+
 // Cancel a reservation
 // DELETE /api/borrows/reservations/:reservationId
 router.delete('/reservations/:reservationId', BorrowController.cancelReservation);

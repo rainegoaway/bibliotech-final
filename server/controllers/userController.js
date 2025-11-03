@@ -392,6 +392,34 @@ static async updateUser(req, res) {
       res.status(500).json({ error: 'Failed to fetch fines' });
     }
   }
+
+  // Get current user's profile (for profile screen)
+  static async getUserProfile(req, res) {
+    try {
+      const userId = req.user.id;
+      
+      // Get user details
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get user's subjects
+      const subjects = await Subject.getUserSubjects(userId);
+      
+      // Get user's genres
+      const genres = await Genre.getUserGenres(userId);
+      
+      res.json({
+        ...user,
+        subjects,
+        genres
+      });
+    } catch (error) {
+      console.error('Get user profile error:', error);
+      res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
+  }
 }
 
 module.exports = UserController;

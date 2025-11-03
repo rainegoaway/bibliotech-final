@@ -599,6 +599,22 @@ class BorrowController {
       res.status(500).json({ error: 'Failed to fetch borrow record' });
     }
   }
+
+  // Get current user's borrow history
+  static async getBorrowHistory(req, res) {
+    try {
+      const userId = req.user.id;
+      const history = await Borrow.findHistoryByUserId(userId); // Assumes this method exists
+      
+      res.json({
+        count: history.length,
+        history
+      });
+    } catch (error) {
+      console.error('Get borrow history error:', error);
+      res.status(500).json({ error: 'Failed to fetch borrow history' });
+    }
+  }
 }
 
 module.exports = BorrowController;
