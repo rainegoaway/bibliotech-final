@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken } from '../utils/storage';
 
-const API_URL = 'http://14.14.8.202:3000/api'; //change ip as needed (jru hyflex ip: 17.17.5.182, home ip: 192.168.1.5)
+const API_URL = 'http://192.168.1.5:3000/api'; //change ip as needed (jru hyflex ip: 17.17.5.182, wifi: 14.14.8.202, home ip: 192.168.1.5)
 
 const api = axios.create({
   baseURL: API_URL,
@@ -140,24 +140,26 @@ export const borrowsAPI = {
   renewBook: (borrowId: number) =>
     api.post(`/borrows/renew/${borrowId}`),
   
-  // Get user's reservations
-  getMyReservations: () =>
-    api.get('/borrows/my-reservations'),
-
   getBorrowHistory: () =>
     api.get('/borrows/history'),
+
+  getOverdueBorrows: () =>
+    api.get('/borrows/overdue'),
+};
+
+// Reservations API
+export const reservationsAPI = {
+  // Get user's reservations
+  getMyReservations: () =>
+    api.get('/reservations/my-reservations'),
   
   // Reserve a book
   reserveBook: (bookId: number) =>
-    api.post('/borrows/reserve', { bookId }),
+    api.post('/reservations', { bookId }),
   
   // Cancel reservation
   cancelReservation: (reservationId: number) =>
-    api.delete(`/borrows/reservations/${reservationId}`),
-  
-  // Admin: Get overdue borrows
-  getOverdueBorrows: () =>
-    api.get('/borrows/overdue'),
+    api.delete(`/reservations/${reservationId}`),
 };
 
 export default api;

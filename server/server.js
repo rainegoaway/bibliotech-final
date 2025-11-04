@@ -13,6 +13,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const bookRoutes = require('./routes/books');
 const borrowRoutes = require('./routes/borrows');
+const reservationRoutes = require('./routes/reservations');
 const subjectRoutes = require('./routes/subjects');
 const genreRoutes = require('./routes/genres');
 
@@ -21,6 +22,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);     
 app.use('/api/books', bookRoutes);
 app.use('/api/borrows', borrowRoutes);
+app.use('/api/reservations', reservationRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/genres', genreRoutes);
 

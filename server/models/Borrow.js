@@ -4,8 +4,8 @@ const db = require('../config/database');
 
 class Borrow {
   // Create new borrow
-  static async create(user_id, book_id) {
-    const [result] = await db.query(
+  static async create(connection, user_id, book_id) {
+    const [result] = await connection.query(
       'INSERT INTO borrows (user_id, book_id, borrowed_date, due_date) VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY))',
       [user_id, book_id]
     );
@@ -40,8 +40,8 @@ class Borrow {
   }
 
   // Mark as returned
-  static async return(id) {
-    const [result] = await db.query(
+  static async return(connection, id) {
+    const [result] = await connection.query(
       'UPDATE borrows SET status = "returned", returned_date = NOW() WHERE id = ?',
       [id]
     );

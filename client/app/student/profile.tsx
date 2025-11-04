@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIn
 import { useRouter } from 'expo-router';
 import { Settings, ArrowLeft, Calendar, Clock, Book, RefreshCw, AlertCircle } from 'lucide-react-native';
 import UserNavBar from '@/components/student/UserNavBar';
-import { borrowsAPI, usersAPI } from '../../src/services/api';
+import { borrowsAPI, usersAPI, reservationsAPI } from '../../src/services/api';
 import { useFocusEffect } from 'expo-router';
 
 // ===============================================
@@ -238,7 +238,7 @@ export default function ProfileScreen() {
       const [profileData, borrowedData, reservedData, historyData] = await Promise.all([
         usersAPI.getUserProfile(),
         borrowsAPI.getMyBorrows(),
-        borrowsAPI.getMyReservations(),
+        reservationsAPI.getMyReservations(),
         borrowsAPI.getBorrowHistory(),
       ]);
 
@@ -285,7 +285,7 @@ export default function ProfileScreen() {
           text: 'Yes',
           onPress: async () => {
             try {
-              await borrowsAPI.cancelReservation(reservationId);
+              await reservationsAPI.cancelReservation(reservationId);
               Alert.alert('Success', 'Reservation cancelled');
               loadData();
             } catch (error: unknown) {

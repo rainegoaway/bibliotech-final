@@ -1,9 +1,10 @@
 // ============================================
-// UPDATED BORROW CONTROLLER
+// BORROW CONTROLLER
 // ============================================
 const Borrow = require('../models/Borrow');
 const Book = require('../models/Book');
 const User = require('../models/User');
+const Reservation = require('../models/Reservation');
 const db = require('../config/database');
 
 class BorrowController {
@@ -56,7 +57,7 @@ class BorrowController {
         
       } else if (book.status === 'reserved') {
         // Check if this user is the reserver with a 'ready' reservation
-        const reservation = await Borrow.findActiveReservationByBookId(bookId);
+        const reservation = await Reservation.findActiveReservationByBookId(bookId);
         
         if (!reservation || reservation.status !== 'ready') {
           await connection.rollback();
@@ -99,13 +100,7 @@ class BorrowController {
       }
 
       // 5. Create borrow record
-      const dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-      const [result] = await connection.query(
-        `INSERT INTO borrows (user_id, book_id, borrowed_date, due_date) 
-         VALUES (?, ?, NOW(), ?)`,
-        [userId, bookId, dueDate]
-      );
-      const borrowId = result.insertId;
+      const borrowId = await Borrow.create(connection, userId, bookId);
 
       // 6. Update book status to borrowed
       await connection.query(
@@ -121,8 +116,7 @@ class BorrowController {
         message: book.status === 'reserved' 
           ? 'Reserved book picked up successfully!' 
           : 'Book borrowed successfully',
-        borrowId,
-        dueDate
+        borrowId
       });
       
     } catch (error) {
@@ -173,26 +167,32 @@ class BorrowController {
 
       console.log('📚 Returning book ID:', borrow.book_id);
 
+      // Update borrow record to returned
+      await Borrow.return(connection, borrowId);
+      
       // Check if book has a pending reservation
-      const reservation = await Borrow.findActiveReservationByBookId(borrow.book_id);
+      const reservation = await Reservation.findActiveReservationByBookId(borrow.book_id);
       
       if (reservation) {
         console.log('⏳ Book has pending reservation by user:', reservation.user_id);
-      }
+        // If there is a pending reservation, update book status to "reserved"
+        await connection.query(
+          'UPDATE books SET status = "reserved", current_borrower_id = NULL WHERE id = ?',
+          [borrow.book_id]
+        );
+        // Update reservation to "ready"
+        await connection.query(
+          'UPDATE reservations SET status = "ready", ready_date = NOW() WHERE id = ?',
+          [reservation.id]
+        );
 
-      // Update borrow record to returned
-      // The database trigger will automatically handle:
-      // - Updating book status
-      // - Updating reservation status if exists
-      // - Clearing current_borrower_id
-      // - Updating user's overdue status
-      await connection.query(
-        'UPDATE borrows SET status = ?, returned_date = NOW() WHERE id = ?',
-        ['returned', borrowId]
-      );
-      
-      console.log('✅ Borrow record updated to returned');
-      console.log('✅ Database triggers handled book and reservation status updates');
+      } else {
+        // If there are no pending reservations, update book status to "available"
+        await connection.query(
+          'UPDATE books SET status = "available", current_borrower_id = NULL WHERE id = ?',
+          [borrow.book_id]
+        );
+      }
 
       await connection.commit();
       
@@ -214,244 +214,6 @@ class BorrowController {
         error: 'Failed to return book',
         details: error.message 
       });
-    } finally {
-      connection.release();
-    }
-  }
-
-  // ============================================
-  // RESERVE A BOOK
-  // ============================================
-  static async reserveBook(req, res) {
-    const connection = await db.getConnection();
-    
-    try {
-      await connection.beginTransaction();
-      
-      const { bookId } = req.body;
-      const userId = req.user.id;
-
-      console.log('📥 Reserve request - User:', userId, 'Book:', bookId);
-
-      // 1. Check if book exists
-      const book = await Book.findById(bookId);
-      if (!book) {
-        await connection.rollback();
-        return res.status(404).json({ error: 'Book not found' });
-      }
-
-      console.log('📚 Book found:', book.title, 'Status:', book.status);
-
-      // 2. Check if book is borrowed (can only reserve borrowed books)
-      if (book.status !== 'borrowed') {
-        await connection.rollback();
-        return res.status(400).json({ 
-          error: book.status === 'available' 
-            ? 'Book is currently available. You can borrow it directly.'
-            : `Book is currently ${book.status}. Cannot reserve.`
-        });
-      }
-
-      // 3. Check if user has overdue books
-      const user = await User.findById(userId);
-      if (user.has_overdue_books) {
-        await connection.rollback();
-        return res.status(403).json({ 
-          error: 'You have overdue books. Please return them before reserving.' 
-        });
-      }
-
-      // 4. Check if book already has a reservation (1:1 ratio)
-      const existingReservation = await Borrow.findActiveReservationByBookId(bookId);
-      if (existingReservation) {
-        await connection.rollback();
-        return res.status(400).json({ 
-          error: 'This book already has an active reservation.' 
-        });
-      }
-
-      // 5. Check if user already reserved this book
-      const userReservations = await Borrow.findReservationsByUserId(userId);
-      const alreadyReserved = userReservations.some(r => r.book_id == bookId && r.status === 'pending');
-      if (alreadyReserved) {
-        await connection.rollback();
-        return res.status(400).json({ 
-          error: 'You have already reserved this book' 
-        });
-      }
-
-      // 6. Create reservation
-      const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days to claim after ready
-      
-      const [result] = await connection.query(
-        `INSERT INTO reservations (user_id, book_id, reserved_date, expires_at, status)
-         VALUES (?, ?, NOW(), ?, 'pending')`,
-        [userId, bookId, expiresAt]
-      );
-      const reservationId = result.insertId;
-
-      // 7. Update book status to reserved
-      await connection.query(
-        'UPDATE books SET status = "reserved" WHERE id = ?',
-        [bookId]
-      );
-
-      await connection.commit();
-      
-      console.log('✅ Reservation created:', reservationId);
-
-      res.status(201).json({
-        message: 'Book reserved successfully. You will be notified when available.',
-        reservationId,
-        expiresAt
-      });
-      
-    } catch (error) {
-      await connection.rollback();
-      console.error('❌ Reserve error:', error);
-      res.status(500).json({ 
-        error: 'Failed to reserve book',
-        details: error.message 
-      });
-    } finally {
-      connection.release();
-    }
-  }
-
-  // ============================================
-  // CANCEL RESERVATION
-  // ============================================
-  static async cancelReservation(req, res) {
-    const connection = await db.getConnection();
-    
-    try {
-      await connection.beginTransaction();
-      
-      const { reservationId } = req.params;
-      const userId = req.user.id;
-
-      console.log('📥 Cancel reservation - User:', userId, 'Reservation:', reservationId);
-
-      // Get reservation details
-      const reservation = await Borrow.findReservationById(reservationId);
-      if (!reservation) {
-        await connection.rollback();
-        return res.status(404).json({ error: 'Reservation not found' });
-      }
-
-      if (reservation.user_id !== userId) {
-        await connection.rollback();
-        return res.status(403).json({ error: 'Not authorized to cancel this reservation' });
-      }
-
-      if (reservation.status !== 'pending' && reservation.status !== 'ready') {
-        await connection.rollback();
-        return res.status(400).json({ 
-          error: `Cannot cancel reservation with status: ${reservation.status}` 
-        });
-      }
-
-      // Cancel the reservation
-      await connection.query(
-        'UPDATE reservations SET status = "cancelled", cancelled_date = NOW() WHERE id = ?',
-        [reservationId]
-      );
-
-      // Update book status back to borrowed (if still borrowed) or available
-      const bookBorrow = await Borrow.findActiveByBookId(reservation.book_id);
-      const newStatus = bookBorrow ? 'borrowed' : 'available';
-      
-      await connection.query(
-        'UPDATE books SET status = ? WHERE id = ?',
-        [newStatus, reservation.book_id]
-      );
-
-      await connection.commit();
-      
-      console.log('✅ Reservation cancelled');
-
-      res.json({ 
-        message: 'Reservation cancelled successfully'
-      });
-      
-    } catch (error) {
-      await connection.rollback();
-      console.error('❌ Cancel reservation error:', error);
-      res.status(500).json({ 
-        error: 'Failed to cancel reservation',
-        details: error.message 
-      });
-    } finally {
-      connection.release();
-    }
-  }
-
-  // ============================================
-  // EXPIRE UNCLAIMED RESERVATIONS (Cron Job)
-  // ============================================
-  static async expireUnclaimedReservations(req, res) {
-    const connection = await db.getConnection();
-    
-    try {
-      await connection.beginTransaction();
-      
-      console.log('🕐 Running reservation expiration check...');
-
-      // Find all 'ready' reservations that have expired
-      const [expiredReservations] = await connection.query(
-        `SELECT r.*, b.title as book_title
-         FROM reservations r
-         JOIN books b ON r.book_id = b.id
-         WHERE r.status = 'ready' AND r.expires_at < NOW()`
-      );
-
-      console.log(`📋 Found ${expiredReservations.length} expired reservations`);
-
-      for (const reservation of expiredReservations) {
-        console.log(`⏰ Expiring reservation ${reservation.id} for book: ${reservation.book_title}`);
-        
-        // Mark reservation as expired
-        await connection.query(
-          'UPDATE reservations SET status = "expired", expired_date = NOW() WHERE id = ?',
-          [reservation.id]
-        );
-        
-        // Set book back to available
-        await connection.query(
-          'UPDATE books SET status = "available", current_borrower_id = NULL WHERE id = ?',
-          [reservation.book_id]
-        );
-      }
-
-      await connection.commit();
-      
-      console.log('✅ Reservation expiration check complete');
-
-      if (res) {
-        res.json({ 
-          message: 'Expired reservations processed',
-          count: expiredReservations.length,
-          expired: expiredReservations.map(r => ({
-            reservationId: r.id,
-            bookId: r.book_id,
-            bookTitle: r.book_title,
-            userId: r.user_id
-          }))
-        });
-      }
-      
-      return expiredReservations.length;
-      
-    } catch (error) {
-      await connection.rollback();
-      console.error('❌ Expire reservations error:', error);
-      if (res) {
-        res.status(500).json({ 
-          error: 'Failed to expire reservations',
-          details: error.message 
-        });
-      }
-      throw error;
     } finally {
       connection.release();
     }
@@ -521,24 +283,6 @@ class BorrowController {
     } catch (error) {
       console.error('Get my borrows error:', error);
       res.status(500).json({ error: 'Failed to fetch borrowed books' });
-    }
-  }
-
-  static async getMyReservations(req, res) {
-    try {
-      const userId = req.user.id;
-      const reservations = await Borrow.findReservationsByUserId(userId);
-      
-      res.json({
-        count: reservations.length,
-        reservations: reservations.map(r => ({
-          ...r,
-          isExpired: new Date(r.expires_at) < new Date()
-        }))
-      });
-    } catch (error) {
-      console.error('Get reservations error:', error);
-      res.status(500).json({ error: 'Failed to fetch reservations' });
     }
   }
 

@@ -33,7 +33,10 @@ interface UserBorrow {
 interface UserReservation {
   id: number;
   book_id: number;
-  status: string;
+  status: 'pending' | 'ready' | 'completed' | 'cancelled' | 'expired';
+  reserved_date: string;
+  expires_at: string;
+  ready_date?: string;
 }
 
 export default function BookDetailScreen() {
@@ -93,10 +96,10 @@ export default function BookDetailScreen() {
 
   const checkUserReservationStatus = async () => {
     try {
-      const response = await api.get(`/borrows/my-reservations`);
+      const response = await api.get(`/reservations/my-reservations`);
       const reservations = response.data.reservations || response.data || [];
       const activeReservation = reservations.find(
-        (r: UserReservation) => r.book_id === parseInt(id as string) && r.status === 'pending'
+        (r: UserReservation) => r.book_id === parseInt(id as string) && (r.status === 'pending' || r.status === 'ready')
       );
       setUserReservation(activeReservation || null);
     } catch (err) {
@@ -179,7 +182,7 @@ export default function BookDetailScreen() {
             const payload = { bookId: book.id };
             console.log('📤 Sending reserve request:', payload);
             
-            const response = await api.post('/borrows/reserve', payload);
+            const response = await api.post('/reservations', payload);
             
             console.log('✅ Reserve response:', response.data);
             
@@ -213,7 +216,7 @@ export default function BookDetailScreen() {
           onPress: async () => {
             try {
               setActionLoading(true);
-              await api.delete(`/borrows/reservations/${userReservation.id}`);
+              await api.delete(`/reservations/${userReservation.id}`);
               Alert.alert('Success', 'Reservation cancelled successfully!');
               checkUserReservationStatus();
             } catch (err: any) {
@@ -227,19 +230,37 @@ export default function BookDetailScreen() {
     );
   };
 
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'available':
-        return styles.statusAvailable;
-      case 'borrowed':
-        return styles.statusBorrowed;
-      case 'reserved':
-        return styles.statusReserved;
-      case 'maintenance':
-        return styles.statusMaintenance;
-      default:
-        return styles.statusDefault;
+  const getStatusBadge = () => {
+    if (!book) return null;
+
+    let statusText = book.status.charAt(0).toUpperCase() + book.status.slice(1);
+    let style = styles.statusDefault;
+
+    if (userReservation && userReservation.status === 'ready') {
+      statusText = 'Available for You';
+      style = styles.statusAvailable;
+    } else {
+      switch (book.status) {
+        case 'available':
+          style = styles.statusAvailable;
+          break;
+        case 'borrowed':
+          style = styles.statusBorrowed;
+          break;
+        case 'reserved':
+          style = styles.statusReserved;
+          break;
+        case 'maintenance':
+          style = styles.statusMaintenance;
+          break;
+      }
     }
+
+    return (
+      <View style={[styles.statusBadge, style]}>
+        <Text style={styles.statusText}>{statusText}</Text>
+      </View>
+    );
   };
 
   const renderActionButton = () => {
@@ -284,8 +305,33 @@ export default function BookDetailScreen() {
       );
     }
 
-    // If user has reserved this book
-    if (userReservation) {
+    // If user has a 'ready' reservation for this book
+    if (userReservation && userReservation.status === 'ready') {
+      return (
+        <View style={styles.actionSection}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.borrowButton]}
+            onPress={handleBorrow}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <BookOpen size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>BORROW RESERVED BOOK</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.infoText}>
+            Pickup before {new Date(userReservation.expires_at).toLocaleDateString()}
+          </Text>
+        </View>
+      );
+    }
+
+    // If user has a 'pending' reservation for this book
+    if (userReservation && userReservation.status === 'pending') {
       return (
         <View style={styles.actionSection}>
           <TouchableOpacity
@@ -396,11 +442,7 @@ export default function BookDetailScreen() {
 
         {/* Status Badge */}
         <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, getStatusBadgeStyle(book.status)]}>
-            <Text style={styles.statusText}>
-              {book.status.charAt(0).toUpperCase() + book.status.slice(1)}
-            </Text>
-          </View>
+          {getStatusBadge()}
         </View>
 
         {/* Action Button (Borrow/Renew/Reserve/Cancel) */}

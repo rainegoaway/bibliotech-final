@@ -40,24 +40,8 @@ router.post('/return/:borrowId', BorrowController.returnBook);
 // POST /api/borrows/renew/:borrowId
 router.post('/renew/:borrowId', BorrowController.renewBook);
 
-// ============================================
-// STUDENT ROUTES - RESERVATIONS
-// ============================================
-
-// Reserve a book
-// POST /api/borrows/reserve
-router.post('/reserve', BorrowController.reserveBook);
-
-// Get current user's reservations 
-// GET /api/borrows/my-reservations
-router.get('/my-reservations', BorrowController.getMyReservations);
-
 // Get current user's borrow history
 // GET /api/borrows/history
 router.get('/history', BorrowController.getBorrowHistory);
-
-// Cancel a reservation
-// DELETE /api/borrows/reservations/:reservationId
-router.delete('/reservations/:reservationId', BorrowController.cancelReservation);
 
 module.exports = router;

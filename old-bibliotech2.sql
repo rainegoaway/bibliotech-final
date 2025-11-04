@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 03, 2025 at 09:55 AM
+-- Generation Time: Nov 02, 2025 at 09:16 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -59,7 +59,7 @@ INSERT INTO `books` (`id`, `title`, `author`, `isbn`, `qr_code`, `genre`, `subje
 (2, 'Clean Code', 'Robert C. Martin', '9780132350884', 'BOOK002', 'Software Engineering', '[\"Programming\", \"Software Development\"]', 2008, NULL, NULL, NULL, 'A handbook of agile software craftsmanship.', NULL, 'A-102', NULL, 'available', 0, NULL, '2025-10-26 15:14:01', '2025-10-26 15:14:01'),
 (3, 'The Pragmatic Programmer', 'David Thomas', '9780135957059', 'BOOK003', 'Software Engineering', '[\"Programming\"]', 2019, NULL, NULL, NULL, 'Your journey to mastery.', NULL, 'A-103', NULL, 'available', 0, NULL, '2025-10-26 15:14:01', '2025-10-26 15:14:01'),
 (4, 'Database System Concepts', 'Abraham Silberschatz', '9780078022159', 'BOOK004', 'Computer Science', '[\"Database\", \"SQL\"]', 2019, NULL, NULL, NULL, 'Comprehensive database concepts and design.', NULL, 'A-104', NULL, 'available', 0, NULL, '2025-10-26 15:14:01', '2025-10-26 15:14:01'),
-(5, 'Artificial Intelligence: A Modern Approach', 'Stuart Russell', '9780134610993', 'BOOK005', 'Computer Science', '[\"AI\", \"Machine Learning\"]', 2020, NULL, NULL, NULL, 'The leading textbook in Artificial Intelligence.', NULL, 'A-105', NULL, 'borrowed', 3, 6, '2025-10-26 15:14:01', '2025-11-03 06:42:27'),
+(5, 'Artificial Intelligence: A Modern Approach', 'Stuart Russell', '9780134610993', 'BOOK005', 'Computer Science', '[\"AI\", \"Machine Learning\"]', 2020, NULL, NULL, NULL, 'The leading textbook in Artificial Intelligence.', NULL, 'A-105', NULL, 'available', 0, NULL, '2025-10-26 15:14:01', '2025-10-26 15:14:01'),
 (6, 'Book Sample', 'Example Author', NULL, 'BOOK-1762068368221-7720', NULL, NULL, 2025, NULL, NULL, NULL, 'Lorem ipsum.', NULL, 'B-301', NULL, 'available', 0, NULL, '2025-11-02 07:26:08', '2025-11-02 07:26:08');
 
 -- --------------------------------------------------------
@@ -126,15 +126,6 @@ CREATE TABLE `borrows` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `borrows`
---
-
-INSERT INTO `borrows` (`id`, `user_id`, `book_id`, `borrowed_date`, `due_date`, `returned_date`, `renewal_count`, `last_renewed_date`, `status`, `librarian_notes`, `created_at`, `updated_at`) VALUES
-(1, 6, 5, '2025-11-02 20:19:18', '2025-11-05 20:19:18', '2025-11-02 20:43:33', 0, NULL, 'returned', NULL, '2025-11-02 20:19:18', '2025-11-02 20:43:33'),
-(2, 3, 5, '2025-11-02 20:44:31', '2025-11-07 20:44:31', '2025-11-03 06:41:01', 2, '2025-11-02 20:44:36', 'returned', NULL, '2025-11-02 20:44:31', '2025-11-03 06:41:01'),
-(3, 6, 5, '2025-11-03 06:42:27', '2025-11-07 06:42:27', NULL, 1, '2025-11-03 06:55:57', 'active', NULL, '2025-11-03 06:42:27', '2025-11-03 06:55:57');
-
---
 -- Triggers `borrows`
 --
 DELIMITER $$
@@ -144,6 +135,24 @@ CREATE TRIGGER `update_book_on_borrow` AFTER INSERT ON `borrows` FOR EACH ROW BE
         current_borrower_id = NEW.user_id,
         total_borrows = total_borrows + 1
     WHERE id = NEW.book_id;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `update_book_on_return` AFTER UPDATE ON `borrows` FOR EACH ROW BEGIN
+    IF NEW.status = 'returned' AND OLD.status != 'returned' THEN
+        -- Check if there's a pending reservation
+        IF EXISTS (SELECT 1 FROM reservations WHERE book_id = NEW.book_id AND status = 'pending') THEN
+            UPDATE books SET status = 'reserved', current_borrower_id = NULL WHERE id = NEW.book_id;
+            UPDATE reservations 
+            SET status = 'ready', 
+                claim_deadline = DATE_ADD(NOW(), INTERVAL 3 DAY)
+            WHERE book_id = NEW.book_id AND status = 'pending'
+            LIMIT 1;
+        ELSE
+            UPDATE books SET status = 'available', current_borrower_id = NULL WHERE id = NEW.book_id;
+        END IF;
+    END IF;
 END
 $$
 DELIMITER ;
@@ -346,22 +355,12 @@ CREATE TABLE `reservations` (
   `user_id` int(11) NOT NULL,
   `book_id` int(11) NOT NULL,
   `reserved_date` datetime NOT NULL,
-  `ready_date` datetime DEFAULT NULL,
-  `completed_date` datetime DEFAULT NULL,
   `expires_at` datetime NOT NULL,
-  `status` enum('pending','ready','completed','cancelled','expired') DEFAULT 'pending',
+  `status` enum('pending','fulfilled','cancelled','expired') DEFAULT 'pending',
   `fulfilled_date` datetime DEFAULT NULL,
   `cancelled_date` datetime DEFAULT NULL,
-  `expired_date` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `reservations`
---
-
-INSERT INTO `reservations` (`id`, `user_id`, `book_id`, `reserved_date`, `ready_date`, `completed_date`, `expires_at`, `status`, `fulfilled_date`, `cancelled_date`, `expired_date`, `created_at`) VALUES
-(1, 6, 5, '2025-11-03 11:32:02', NULL, NULL, '2025-11-06 11:32:02', 'cancelled', NULL, '2025-11-03 14:42:03', NULL, '2025-11-03 03:32:02');
 
 -- --------------------------------------------------------
 
@@ -458,11 +457,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `school_id`, `password_hash`, `name`, `email`, `role`, `course`, `program`, `year_level`, `subjects`, `preferred_genres`, `preference_tags`, `is_active`, `is_first_login`, `has_overdue_books`, `created_at`, `updated_at`, `last_login`) VALUES
-(1, 'ADMIN001', '$2b$10$EcFjNP6eKgRT2v8e0XrghedWNV0cZSTezYRLj85PeGPwkP3wVh8bG', 'System Administrator', NULL, 'admin', NULL, NULL, NULL, NULL, NULL, NULL, 1, 0, 0, '2025-10-26 15:14:01', '2025-11-03 06:40:47', '2025-11-03 06:40:47'),
+(1, 'ADMIN001', '$2b$10$EcFjNP6eKgRT2v8e0XrghedWNV0cZSTezYRLj85PeGPwkP3wVh8bG', 'System Administrator', NULL, 'admin', NULL, NULL, NULL, NULL, NULL, NULL, 1, 0, 0, '2025-10-26 15:14:01', '2025-11-02 17:56:12', '2025-11-02 17:56:12'),
 (2, '2021-00001', '$2b$10$wU7kQsim8A8wYGNIPhPhHeF7cLfbdkGsRz1cKJxg58c73Mlwn/U3e', 'Juan Dela Cruz', NULL, 'student', 'Computer Science', 'BSCS', 3, NULL, '[\"Technology\", \"Science Fiction\", \"Programming\"]', NULL, 1, 1, 0, '2025-10-26 15:14:01', '2025-10-29 08:35:20', '2025-10-29 08:35:20'),
-(3, '2021-00002', '$2b$10$6AYzR562sEu.7xwdzqew.Op.yNa4rUA4tCmxjLuN5RKdf8BFL/jnu', 'Marie Elena', 'marieelena@gmail.com', 'student', 'BSBA', NULL, 2, NULL, NULL, NULL, 1, 0, 0, '2025-10-29 09:12:51', '2025-11-02 20:44:19', '2025-11-02 20:44:19'),
+(3, '2021-00002', '$2b$10$6AYzR562sEu.7xwdzqew.Op.yNa4rUA4tCmxjLuN5RKdf8BFL/jnu', 'Marie Elena', 'marieelena@gmail.com', 'student', 'BSBA', NULL, 2, NULL, NULL, NULL, 1, 0, 0, '2025-10-29 09:12:51', '2025-11-02 13:31:51', '2025-11-02 13:31:51'),
 (5, '2021-00003', '$2b$10$659PCz2A2x8YTnQXPJjOc.bTNDI667AkCp5OVX4xXY4aLD25lVnOW', 'ABCD EFG', 'abcdefg@gmail.com', 'student', 'BSIT', NULL, 4, NULL, NULL, NULL, 1, 0, 0, '2025-11-02 13:38:24', '2025-11-02 18:01:27', '2025-11-02 17:36:33'),
-(6, '123', '$2b$10$JpBePXHQSvY/mp/q/7BM/ONq7SCVvZirMve/yFcad/R3gWlDW.MVS', 'new', 'new@gmail.com', 'student', 'BSBA', NULL, 1, NULL, NULL, NULL, 1, 0, 0, '2025-11-02 18:01:46', '2025-11-03 08:50:39', '2025-11-03 08:50:39');
+(6, '123', '$2b$10$JpBePXHQSvY/mp/q/7BM/ONq7SCVvZirMve/yFcad/R3gWlDW.MVS', 'new', 'new@gmail.com', 'student', 'BSBA', NULL, 1, NULL, NULL, NULL, 1, 0, 0, '2025-11-02 18:01:46', '2025-11-02 20:07:44', '2025-11-02 20:07:44');
 
 -- --------------------------------------------------------
 
@@ -709,7 +708,7 @@ ALTER TABLE `book_subjects`
 -- AUTO_INCREMENT for table `borrows`
 --
 ALTER TABLE `borrows`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `courses`
@@ -751,7 +750,7 @@ ALTER TABLE `reading_stats`
 -- AUTO_INCREMENT for table `reservations`
 --
 ALTER TABLE `reservations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `saved_searches`
