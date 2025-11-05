@@ -236,6 +236,33 @@ class BookController {
       res.status(500).json({ error: 'Failed to fetch book subjects' });
     }
   }
+
+  // Search for books
+  static async searchBooks(req, res) {
+    try {
+      const { q } = req.query;
+
+      if (!q || !q.trim()) {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      console.log(`🔍 Searching for books with query: "${q}"`);
+
+      const books = await Book.search(q);
+
+      res.json({
+        count: books.length,
+        books
+      });
+      
+    } catch (error) {
+      console.error('❌ Book search error:', error);
+      res.status(500).json({ 
+        error: 'Failed to search for books',
+        details: error.message 
+      });
+    }
+  }
 }
 
 module.exports = BookController;

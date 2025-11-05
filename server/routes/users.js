@@ -24,6 +24,10 @@ router.get('/my-fines', UserController.getMyFines);
 // GET /api/users/profile
 router.get('/profile', UserController.getUserProfile);
 
+// Get current user's preferences (subjects and genres)
+// GET /api/users/my-preferences
+router.get('/my-preferences', UserController.getMyPreferences);
+
 
 // ============================================
 // ADMIN ROUTES

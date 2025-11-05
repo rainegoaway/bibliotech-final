@@ -52,6 +52,9 @@ export const booksAPI = {
   getAllBooks: (params?: any) => 
     api.get('/books', { params }),
   
+  searchBooks: (query: string) =>
+    api.get('/books/search', { params: { q: query } }),
+  
   getBookById: (id: number) => 
     api.get(`/books/${id}`), // ✅ Fixed: parenthesis + template literal
   
@@ -93,6 +96,9 @@ export const usersAPI = {
 
   getUserProfile: () =>
     api.get('/users/profile'),
+
+  getMyPreferences: () =>
+    api.get('/users/my-preferences'),
 };
 
 // Genres API

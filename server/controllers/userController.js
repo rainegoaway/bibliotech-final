@@ -420,6 +420,25 @@ static async updateUser(req, res) {
       res.status(500).json({ error: 'Failed to fetch user profile' });
     }
   }
+
+  // Get current user's preferences (subjects and genres)
+  static async getMyPreferences(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const subjects = await Subject.getUserSubjects(userId);
+      const genres = await Genre.getUserGenres(userId);
+
+      res.json({
+        subjects,
+        genres
+      });
+
+    } catch (error) {
+      console.error('Get my preferences error:', error);
+      res.status(500).json({ error: 'Failed to fetch user preferences' });
+    }
+  }
 }
 
 module.exports = UserController;

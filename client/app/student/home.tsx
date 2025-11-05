@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { 
   Bell, 
@@ -18,7 +18,6 @@ import UserNavBar from '../../components/student/UserNavBar';
 export default function StudentHomeScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [allBooks, setAllBooks] = useState<any[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [loading, setLoading] = useState(true);
@@ -64,15 +63,7 @@ export default function StudentHomeScreen() {
     router.replace('/');
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      router.push(`/student/search?q=${searchQuery}` as any);
-    } else {
-      router.push('/student/search' as any);
-    }
-  };
-
-  // Filter books based on selected genre
+  // Re-introduced getFilteredBooks, now only dependent on selectedGenre
   const getFilteredBooks = () => {
     if (selectedGenre === 'All') {
       return allBooks;
@@ -80,7 +71,7 @@ export default function StudentHomeScreen() {
     return allBooks.filter(book => book.genre === selectedGenre);
   };
 
-  const filteredBooks = getFilteredBooks();
+  const filteredBooks = getFilteredBooks(); // filteredBooks is now correctly defined
 
   return (
     <View style={styles.container}>
@@ -128,17 +119,10 @@ export default function StudentHomeScreen() {
             */}
             <TouchableOpacity 
               style={styles.searchInputContainer}
-              onPress={handleSearch}
+              onPress={() => router.push('/student/search' as any)}
             >
               <Search size={20} color="#999" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search"
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-              />
+              <Text style={styles.searchPlaceholderText}>Search by title, author, ISBN...</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.qrButton}
@@ -288,12 +272,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     gap: 8,
+    height: 44,
   },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
+  searchPlaceholderText: {
     fontSize: 16,
-    color: '#000',
+    color: '#999',
+    flex: 1,
   },
   qrButton: {
     padding: 8,

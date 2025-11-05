@@ -7,6 +7,7 @@ const { authenticateToken, isAdmin } = require('../middleware/auth');
 
 // Public routes (authenticated users)
 router.get('/', authenticateToken, BookController.getAllBooks);
+router.get('/search', authenticateToken, BookController.searchBooks);
 router.get('/:id', authenticateToken, BookController.getBookById);
 router.get('/qr/:qr_code', authenticateToken, BookController.getBookByQR);
 router.get('/:id/genres', authenticateToken, BookController.getBookGenres);

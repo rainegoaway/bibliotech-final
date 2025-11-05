@@ -284,6 +284,33 @@ class Book {
     );
     return subjects;
   }
+
+  // Search for books by query
+  static async search(query) {
+    const searchTerm = `%${query}%`;
+    const sql = `
+      SELECT
+        b.id,
+        b.title,
+        b.author,
+        b.cover_image_url,
+        b.status,
+        GROUP_CONCAT(DISTINCT g.name) as genre_names
+      FROM books b
+      LEFT JOIN book_genres bg ON b.id = bg.book_id
+      LEFT JOIN genres g ON bg.genre_id = g.id
+      WHERE
+        b.title LIKE ? OR
+        b.author LIKE ? OR
+        b.isbn LIKE ? OR
+        b.synopsis LIKE ?
+      GROUP BY b.id
+      ORDER BY b.title;
+    `;
+    
+    const [books] = await db.query(sql, [searchTerm, searchTerm, searchTerm, searchTerm]);
+    return books;
+  }
 }
 
 module.exports = Book;
