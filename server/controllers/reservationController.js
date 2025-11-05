@@ -1,6 +1,7 @@
 const Reservation = require('../models/Reservation');
 const Book = require('../models/Book');
 const User = require('../models/User');
+const Borrow = require('../models/Borrow'); // ADDED: Import Borrow model
 const db = require('../config/database');
 
 class ReservationController {

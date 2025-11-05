@@ -92,10 +92,11 @@ export default function BookDetailScreen() {
     try {
       const response = await api.get(`/borrows/my-books`);
       const borrows = response.data.borrows || response.data || [];
-      const activeBorrow = borrows.find(
-        (b: UserBorrow) => b.book_id === parseInt(id as string) && (b.status === 'borrowed' || b.status === 'overdue')
-      );
-      setUserBorrow(activeBorrow || null);
+      console.log('🐛 Debug: Fetched borrows:', borrows);
+          const activeBorrow = borrows.find(
+            (b: UserBorrow) => b.book_id === parseInt(id as string) && b.status === 'active'
+          );      setUserBorrow(activeBorrow || null);
+      console.log('🐛 Debug: userBorrow after checkUserBorrowStatus:', activeBorrow);
     } catch (err) {
       console.error('Error checking borrow status:', err);
     }
@@ -199,8 +200,14 @@ export default function BookDetailScreen() {
   const handleReserve = async () => {
   if (!book) return;
 
-  console.log('🔍 Current book object:', book);
-  console.log('🔍 Book ID:', book.id);
+  // Prevent reserving if the user currently has the book borrowed
+  if (userBorrow) {
+    Alert.alert(
+      'Cannot Reserve',
+      'You currently have this book borrowed. Please return it before reserving.'
+    );
+    return;
+  }
 
   Alert.alert(
     'Reserve Book',
@@ -214,11 +221,8 @@ export default function BookDetailScreen() {
             setActionLoading(true);
             
             const payload = { bookId: book.id };
-            console.log('📤 Sending reserve request:', payload);
             
             const response = await api.post('/reservations', payload);
-            
-            console.log('✅ Reserve response:', response.data);
             
             Alert.alert('Success', 'Book reserved successfully!');
             checkUserReservationStatus();
