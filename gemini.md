@@ -140,3 +140,32 @@ Implemented a comprehensive feature for handling overdue books with the followin
 
 *   **Issue:** Book items displayed in search results were not clickable, preventing users from viewing book details.
 *   **Fix:** Modified `client/app/student/search.tsx`. The `BookItem` component was updated to wrap its content in a `TouchableOpacity` with an `onPress` handler. This handler uses `router.push` to navigate to the `student/book-view/[id]` screen, passing the book's ID. The `router` object is now passed as a prop to the `BookItem` component.
+
+## Home Screen Search Bar Simplification
+
+*   **Issue:** The search bar on the student home screen (`client/app/student/home.tsx`) accepted text input but did not properly pass the query to the search page, and also caused a `ReferenceError: Property 'filteredBooks' doesn't exist` after a previous modification.
+*   **Analysis:** The original intent was to simplify the home screen search bar to act as a navigation button to the dedicated search screen. The `ReferenceError` was due to the removal of `searchQuery` state and the `handleSearch` function, which were part of the home screen's book filtering logic.
+*   **Fix:**
+    *   Modified `client/app/student/home.tsx` to remove the `TextInput` from the search bar. It now functions as a `TouchableOpacity` that navigates directly to `/student/search` when pressed.
+    *   Removed `searchQuery` state and the `handleSearch` function from `home.tsx`.
+    *   Re-introduced the `getFilteredBooks` function to correctly filter `allBooks` based solely on `selectedGenre`, resolving the `ReferenceError`.
+
+## QR Functionality Implementation
+
+*   **Goal:** Implement QR code generation for books and scanning capabilities within the application.
+*   **Backend Changes:**
+    *   **Database Schema:** Confirmed that the `books` table already contains a `qr_code` column, which stores a unique string identifier for each book. No new database tables or backend logic were required for QR code generation itself.
+*   **Frontend Changes:**
+    *   **QR Code Display (`client/app/student/book-view/[id].tsx`):**
+        *   Installed `react-native-qrcode-svg` library.
+        *   Modified `book-view/[id].tsx` to import `QrCodeSvg`.
+        *   Constructed a full URL (e.g., `exp://<your-ip-address>/--/student/book-view/${book.id}`) to be encoded in the QR code.
+        *   Rendered the `QrCodeSvg` component in the book details view.
+    *   **QR Code Scanning (Student - `client/app/student/qr-scanner.tsx`):**
+        *   Installed `expo-barcode-scanner` library.
+        *   Implemented camera permission request logic.
+        *   Integrated `BarCodeScanner` to display the camera feed.
+        *   Developed `handleBarCodeScanned` to parse the scanned URL, extract the book ID, and navigate to `student/book-view/[id]`.
+    *   **QR Code Scanning (Admin - `client/app/admin/qr-scanner.tsx`):**
+        *   Implemented similar camera permission request and scanning logic as the student version.
+        *   Navigates to `student/book-view/[id]` upon successful scan, as per current requirements.

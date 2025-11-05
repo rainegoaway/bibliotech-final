@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, BookOpen, MapPin, Hash, Calendar, AlertCircle } from 'lucide-react-native';
 import api from '../../../src/services/api';
 import { getUserData } from '../../../src/utils/storage';
+import QrCodeSvg from 'react-native-qrcode-svg'; // ADDED: Import QrCodeSvg
 
 interface BookDetails {
   id: number;
@@ -49,6 +50,9 @@ export default function BookDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
+
+  // ADDED: Base URL for QR code generation
+  const APP_BASE_URL = 'exp://192.168.1.5:8081/--/student/book-view'; // Replace with your actual Expo dev URL or production URL
 
   useEffect(() => {
     loadUserData();
@@ -419,6 +423,9 @@ export default function BookDetailScreen() {
     );
   }
 
+  // ADDED: QR code value
+  const qrCodeValue = book ? `${APP_BASE_URL}/${book.id}` : '';
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -452,8 +459,16 @@ export default function BookDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>QR Code</Text>
           <View style={styles.qrContainer}>
-            <Hash size={20} color="#666" />
-            <Text style={styles.qrCode}>{book.qr_code}</Text>
+            {book && qrCodeValue ? ( // ADDED: Conditional rendering for QrCodeSvg
+              <QrCodeSvg
+                value={qrCodeValue}
+                size={200}
+                color="black"
+                backgroundColor="white"
+              />
+            ) : (
+              <Text style={styles.qrCodePlaceholder}>QR Code not available</Text>
+            )}
           </View>
         </View>
 
@@ -704,18 +719,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   qrContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 12,
-    gap: 12,
   },
   qrCode: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     fontFamily: 'monospace',
+  },
+  qrCodePlaceholder: {
+    fontSize: 16,
+    color: '#666',
   },
   infoRow: {
     flexDirection: 'row',
