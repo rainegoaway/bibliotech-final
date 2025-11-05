@@ -51,6 +51,8 @@ interface ActiveBorrow {
   borrowed_date: string;
   due_date: string;
   status: string;
+  is_overdue?: boolean;
+  fine?: number;
 }
 
 const ViewBookModal: React.FC<ViewBookModalProps> = ({
@@ -149,9 +151,17 @@ const fetchBookDetails = async () => {
   const handleReturnBook = async () => {
     if (!activeBorrow || !book) return;
 
+    const fine = activeBorrow.fine || 0;
+    const isOverdue = activeBorrow.is_overdue || false;
+
+    let alertMessage = `Are you sure you want to return "${book.title}"?`;
+    if (isOverdue && fine > 0) {
+      alertMessage += `\n\nThis book is overdue. A fine of ₱${fine.toFixed(2)} has been recorded.`;
+    }
+
     Alert.alert(
       'Return Book',
-      `Are you sure you want to return "${book.title}"?`,
+      alertMessage,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -264,12 +274,21 @@ const fetchBookDetails = async () => {
           
           {/* Due Date Info */}
           {activeBorrow && (
-            <View style={styles.dueDateInfo}>
-              <Calendar size={16} color="#666" />
-              <Text style={styles.dueDateText}>
-                Due: {new Date(activeBorrow.due_date).toLocaleDateString()}
-              </Text>
-            </View>
+            <>
+              <View style={styles.dueDateInfo}>
+                <Calendar size={16} color={activeBorrow.is_overdue ? '#c0392b' : '#666'} />
+                <Text style={[styles.dueDateText, activeBorrow.is_overdue && styles.overdueText]}>
+                  Due: {new Date(activeBorrow.due_date).toLocaleDateString()}
+                </Text>
+              </View>
+              {activeBorrow.is_overdue && activeBorrow.fine !== undefined && activeBorrow.fine > 0 && (
+                <View style={styles.fineInfo}>
+                  <Text style={styles.fineText}>
+                    Fine: ₱{activeBorrow.fine.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </>
           )}
 
           {/* Reserved By Info (if book is reserved) */}
@@ -706,6 +725,22 @@ reservedText: {
   fontSize: 13,
   color: '#856404',
   fontWeight: '600',
+},
+overdueText: {
+  color: '#c0392b',
+},
+fineInfo: {
+  backgroundColor: '#fbe9e7',
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 8,
+  marginBottom: 12,
+},
+fineText: {
+  fontSize: 14,
+  color: '#c0392b',
+  fontWeight: 'bold',
+  textAlign: 'center',
 },
 });
 

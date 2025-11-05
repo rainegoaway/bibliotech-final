@@ -38,8 +38,8 @@ class ReservationController {
       }
 
       // 3. Check if user has overdue books
-      const user = await User.findById(userId);
-      if (user.has_overdue_books) {
+      const hasOverdue = await User.updateOverdueStatus(userId);
+      if (hasOverdue) {
         await connection.rollback();
         return res.status(403).json({ 
           error: 'You have overdue books. Please return them before reserving.' 

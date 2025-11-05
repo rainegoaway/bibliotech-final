@@ -19,10 +19,27 @@ class BookController {
       };
 
       const books = await Book.findAll(filters);
-      
+
+      const booksWithOverdue = books.map(book => {
+        const isOverdue = book.due_date && new Date(book.due_date) < new Date();
+        let fine = 0;
+        if (isOverdue) {
+          let daysOverdue = Math.floor((Date.now() - new Date(book.due_date).getTime()) / (1000 * 60 * 60 * 24));
+          if (daysOverdue === 0) {
+            daysOverdue = 1;
+          }
+          fine = daysOverdue * 5;
+        }
+        return {
+          ...book,
+          is_overdue: isOverdue,
+          fine: fine
+        };
+      });
+
       res.json({ 
         count: books.length,
-        books 
+        books: booksWithOverdue
       });
     } catch (error) {
       console.error('❌ Get books error:', error);

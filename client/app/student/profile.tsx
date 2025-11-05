@@ -112,7 +112,7 @@ const BorrowedBooks: React.FC<BorrowedBooksProps> = ({ books, onRenew, onPress }
               {isOverdue && (
                 <View style={styles.overdueInfo}>
                   <AlertCircle size={14} color="#c0392b" />
-                  <Text style={styles.overdueText}>Overdue! Fine: ${fine}</Text>
+                  <Text style={styles.overdueText}>Overdue! Fine: ₱{fine}</Text>
                 </View>
               )}
             </View>

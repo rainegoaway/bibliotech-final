@@ -15,12 +15,14 @@ class Book {
     let query = `
       SELECT DISTINCT b.*, 
              GROUP_CONCAT(DISTINCT g.name) as genre_names,
-             GROUP_CONCAT(DISTINCT s.name) as subject_names
+             GROUP_CONCAT(DISTINCT s.name) as subject_names,
+             br.due_date
       FROM books b
       LEFT JOIN book_genres bg ON b.id = bg.book_id
       LEFT JOIN genres g ON bg.genre_id = g.id
       LEFT JOIN book_subjects bs ON b.id = bs.book_id
       LEFT JOIN subjects s ON bs.subject_id = s.id
+      LEFT JOIN borrows br ON b.id = br.book_id AND br.status = 'active'
       WHERE 1=1
     `;
     const params = [];

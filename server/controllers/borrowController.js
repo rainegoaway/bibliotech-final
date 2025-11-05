@@ -32,8 +32,8 @@ class BorrowController {
       console.log('📚 Book status:', book.status);
 
       // 2. Check if user has overdue books
-      const user = await User.findById(userId);
-      if (user.has_overdue_books) {
+      const hasOverdue = await User.updateOverdueStatus(userId);
+      if (hasOverdue) {
         await connection.rollback();
         return res.status(403).json({ 
           error: 'You have overdue books. Please return them before borrowing more.' 
@@ -271,14 +271,25 @@ class BorrowController {
     try {
       const userId = req.user.id;
       const borrows = await Borrow.findActiveByUserId(userId);
-      
       res.json({
         count: borrows.length,
-        borrows: borrows.map(b => ({
-          ...b,
-          is_overdue: new Date(b.due_date) < new Date(),
-          daysUntilDue: Math.ceil((new Date(b.due_date) - Date.now()) / (1000 * 60 * 60 * 24))
-        }))
+        borrows: borrows.map(b => {
+          const isOverdue = new Date(b.due_date) < new Date();
+          let fine = 0;
+          if (isOverdue) {
+            let daysOverdue = Math.floor((Date.now() - new Date(b.due_date).getTime()) / (1000 * 60 * 60 * 24));
+            if (daysOverdue === 0) {
+              daysOverdue = 1;
+            }
+            fine = daysOverdue * 5;
+          }
+          return {
+            ...b,
+            is_overdue: isOverdue,
+            daysUntilDue: Math.ceil((new Date(b.due_date) - Date.now()) / (1000 * 60 * 60 * 24)),
+            fine: fine
+          };
+        })
       });
     } catch (error) {
       console.error('Get my borrows error:', error);
@@ -331,11 +342,22 @@ class BorrowController {
         return res.status(404).json({ error: 'No active borrow found for this book' });
       }
 
+      const isOverdue = new Date(borrow.due_date) < new Date();
+      let fine = 0;
+      if (isOverdue) {
+        let daysOverdue = Math.floor((Date.now() - new Date(borrow.due_date).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysOverdue === 0) {
+          daysOverdue = 1;
+        }
+        fine = daysOverdue * 5;
+      }
+
       res.json({
         borrow: {
           ...borrow,
-          is_overdue: new Date(borrow.due_date) < new Date(),
-          daysUntilDue: Math.ceil((new Date(borrow.due_date) - Date.now()) / (1000 * 60 * 60 * 24))
+          is_overdue: isOverdue,
+          daysUntilDue: Math.ceil((new Date(borrow.due_date) - Date.now()) / (1000 * 60 * 60 * 24)),
+          fine: fine
         }
       });
     } catch (error) {

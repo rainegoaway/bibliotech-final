@@ -128,6 +128,23 @@ class User {
       [password_hash, id]
     );
   }
+
+  // Check and update user's overdue status
+  static async updateOverdueStatus(userId) {
+    const [overdueBorrows] = await db.query(
+      `SELECT COUNT(*) as count FROM borrows WHERE user_id = ? AND status = 'active' AND due_date < NOW()`,
+      [userId]
+    );
+    
+    const hasOverdue = overdueBorrows[0].count > 0;
+    
+    await db.query(
+      'UPDATE users SET has_overdue_books = ? WHERE id = ?',
+      [hasOverdue, userId]
+    );
+    
+    return hasOverdue;
+  }
 }
 
 module.exports = User;

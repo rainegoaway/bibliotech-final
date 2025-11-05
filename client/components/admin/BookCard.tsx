@@ -17,6 +17,8 @@ interface Book {
   current_borrower_id?: number;
   genre_names?: string;
   subject_names?: string;
+  is_overdue?: boolean;
+  fine?: number;
 }
 
 interface BookCardProps {
@@ -33,14 +35,22 @@ export default function BookCard({
   onDelete
 }: BookCardProps) {
   
+  const isOverdue = book.is_overdue;
+
   const getStatusBadgeColor = () => {
+    if (isOverdue) return '#c0392b'; // Overdue Red
     switch(book.status) {
-      case 'available': return '#4CAF50'; // Green
-      case 'borrowed': return '#f44336'; // Red
-      case 'reserved': return '#FF9800'; // Orange
-      case 'maintenance': return '#9E9E9E'; // Gray
-      default: return '#ccc';
+      case 'available': return '#27ae60'; // Green
+      case 'borrowed': return '#e67e22'; // Orange
+      case 'reserved': return '#3498db'; // Blue
+      case 'maintenance': return '#7f8c8d'; // Gray
+      default: return '#95a5a6';
     }
+  };
+
+  const getStatusText = () => {
+    if (isOverdue) return 'OVERDUE';
+    return book.status.toUpperCase();
   };
 
   return (
@@ -48,7 +58,7 @@ export default function BookCard({
       {/* Header Row */}
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: '#d4a5b8' }]}>
+          <View style={[styles.avatar, { backgroundColor: getStatusBadgeColor() }]}>
             <BookOpen size={24} color="#fff" />
           </View>
         </View>
@@ -60,13 +70,18 @@ export default function BookCard({
 
         <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeColor() }]}>
           <Text style={styles.statusText}>
-            {book.status.toUpperCase()}
+            {getStatusText()}
           </Text>
         </View>
       </View>
 
       {/* Details Row */}
       <View style={styles.details}>
+        {isOverdue && book.fine !== undefined && book.fine > 0 && (
+          <Text style={styles.fineText}>
+            Fine: ₱{book.fine.toFixed(2)}
+          </Text>
+        )}
         <Text style={styles.detailText}>
           📚 QR: {book.qr_code}
         </Text>
@@ -177,6 +192,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+  },
+  fineText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#c0392b',
+    marginBottom: 6,
   },
   detailText: {
     fontSize: 13,

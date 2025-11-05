@@ -83,3 +83,33 @@ I fixed a bug in `server/routes/reservations.js` that was causing the server to 
 *   **Fix:** Updated the `findReservationsByUserId` query in `server/models/Reservation.js` to:
     *   Include `b.author` and alias `b.title` to `title`.
     *   Filter reservations by status `pending` or `ready` to ensure only active reservations are displayed.
+
+### 5. Fix 500 Error on Borrow Status Fetch
+
+*   **Issue:** Encountered `AxiosError: Request failed with status code 500` when fetching borrow status, affecting user profile and book view. The `getMyBorrows` function in `server/controllers/borrowController.js` was attempting to use an undefined `borrows` variable.
+*   **Fix:** Added `const borrows = await Borrow.findActiveByUserId(userId);` to `server/controllers/borrowController.js` to correctly fetch user's borrowed books.
+
+## Overdue Books Feature
+
+Implemented a comprehensive feature for handling overdue books with the following capabilities:
+
+### 1. Fine Calculation
+
+*   A fine of **5 pesos per day** is now automatically calculated for all overdue books.
+*   The fine calculation now starts at **5 pesos on the first day** a book is overdue.
+*   This calculation is performed in the backend (`borrowController.js` and `bookController.js`) whenever borrowed or all books are fetched, ensuring the fine amount is always up-to-date.
+
+### 2. Borrowing Restrictions
+
+*   Users with an active `has_overdue_books` flag are now **blocked from borrowing or reserving new books**.
+*   The `has_overdue_books` flag is dynamically updated in `server/models/User.js` via the `updateOverdueStatus` method, which is called before borrowing or reserving actions in `borrowController.js` and `reservationController.js`.
+
+### 3. Admin Panel Updates
+
+*   **Overdue Indicator:** On the main book management screen, overdue books are now clearly marked with a prominent red **"OVERDUE"** badge and display the total fine on the book card.
+*   **Return with Fine Note:** When an admin returns a book on behalf of a user, the confirmation alert now includes the total fine amount, ensuring the admin is aware of any outstanding charges.
+
+### 4. User Profile Updates
+
+*   Overdue books in a user's "Borrowed" list are now correctly marked as overdue and display the total calculated fine.
+*   The currency symbol for fines has been updated from `$` to `₱` in the frontend (`client/app/student/profile.tsx`).
