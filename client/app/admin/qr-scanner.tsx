@@ -1,50 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, Button, Alert, Linking } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
-import { Camera } from 'expo-camera'; // Import Camera for permission request
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import AdminNavBar from '../../components/admin/AdminNavBar'; // Keep AdminNavBar
+import AdminNavBar from '../../components/admin/AdminNavBar';
 import { ArrowLeft } from 'lucide-react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
+import ViewBookModal from '../../components/admin/ViewBookModal'; // Import ViewBookModal
 
 export default function QRScannerScreen() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false); // State for modal visibility
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(null); // State for book ID to view
   const router = useRouter();
 
   useEffect(() => {
-    const getCameraPermissions = async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync(); // Use Camera for permissions
-      setHasPermission(status === 'granted');
-    };
-
-    getCameraPermissions();
-  }, []);
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
 
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     console.log(`Bar code with type ${type} and data ${data} has been scanned!`);
 
-    // Expected QR code data format: exp://<your-ip-address>/--/student/book-view/<book-id>
-    // Or a direct URL like https://your-app.com/student/book-view/<book-id>
-
     const bookIdMatch = data.match(/\/student\/book-view\/(\d+)/);
 
     if (bookIdMatch && bookIdMatch[1]) {
-      const bookId = bookIdMatch[1];
-      Alert.alert(
-        'QR Code Scanned',
-        `Book ID: ${bookId}\nNavigating to book details...`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Admin scanner also navigates to student book view for now, as per request
-              router.replace(`/student/book-view/${bookId}` as any);
-            },
-          },
-        ]
-      );
+      const bookId = parseInt(bookIdMatch[1]);
+      setSelectedBookId(bookId);
+      setIsModalVisible(true); // Open the modal
     } else {
       Alert.alert(
         'Invalid QR Code',
@@ -59,18 +44,25 @@ export default function QRScannerScreen() {
     }
   };
 
-  if (hasPermission === null) {
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setSelectedBookId(null);
+    setScanned(false); // Allow rescanning after modal closes
+  };
+
+  if (!permission) {
     return (
       <View style={styles.container}>
         <Text style={styles.permissionText}>Requesting for camera permission</Text>
       </View>
     );
   }
-  if (hasPermission === false) {
+
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.permissionText}>No access to camera</Text>
-        <Button title={'Grant Permission'} onPress={() => Linking.openSettings()} />
+        <Button title={'Grant Permission'} onPress={requestPermission} />
       </View>
     );
   }
@@ -87,16 +79,27 @@ export default function QRScannerScreen() {
       </View>
 
       <View style={styles.scannerContainer}>
-        <BarCodeScanner
-          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        <CameraView
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           style={StyleSheet.absoluteFillObject}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr'],
+          }}
         />
-        {scanned && (
+        {scanned && !isModalVisible && (
           <Button title={'Tap to Scan Again'} onPress={() => setScanned(false)} />
         )}
       </View>
       {/* Navigation Bar*/}
       <AdminNavBar currentPage="qr" />
+
+      {/* View Book Modal */}
+      <ViewBookModal
+        visible={isModalVisible}
+        onClose={handleCloseModal}
+        bookId={selectedBookId}
+        isAdmin={true}
+      />
     </View>
   );
 }

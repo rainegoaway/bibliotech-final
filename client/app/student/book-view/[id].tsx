@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, BookOpen, MapPin, Hash, Calendar, AlertCircle } from 'lucide-react-native';
 import api from '../../../src/services/api';
 import { getUserData } from '../../../src/utils/storage';
-import QrCodeSvg from 'react-native-qrcode-svg'; // ADDED: Import QrCodeSvg
+import QrCodeSvg from 'react-native-qrcode-svg';
+import * as MediaLibrary from 'expo-media-library';
+import { captureRef } from 'react-native-view-shot';
 
 interface BookDetails {
   id: number;
@@ -50,6 +52,7 @@ export default function BookDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
+  const qrCodeRef = useRef<View>(null);
 
   // ADDED: Base URL for QR code generation
   const APP_BASE_URL = 'exp://192.168.1.5:8081/--/student/book-view'; // Replace with your actual Expo dev URL or production URL
@@ -90,7 +93,7 @@ export default function BookDetailScreen() {
       const response = await api.get(`/borrows/my-books`);
       const borrows = response.data.borrows || response.data || [];
       const activeBorrow = borrows.find(
-        (b: UserBorrow) => b.book_id === parseInt(id as string) && b.status === 'active'
+        (b: UserBorrow) => b.book_id === parseInt(id as string) && (b.status === 'borrowed' || b.status === 'overdue')
       );
       setUserBorrow(activeBorrow || null);
     } catch (err) {
@@ -110,6 +113,33 @@ export default function BookDetailScreen() {
       console.error('Error checking reservation status:', err);
     }
   };
+
+  const handleSaveQrCode = async () => {
+    if (qrCodeRef.current) {
+      try {
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Please grant media library permissions to save the QR code.');
+          return;
+        }
+
+        const uri = await captureRef(qrCodeRef, {
+          format: 'png',
+          quality: 1,
+        });
+
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert('Success', 'QR Code saved to gallery!');
+      } catch (e) {
+        console.error('Failed to save QR code', e);
+        Alert.alert('Error', 'Failed to save QR code.');
+      }
+    }
+  };
+
+
+
+
 
   const handleBorrow = async () => {
     if (!book) return;
@@ -458,17 +488,22 @@ export default function BookDetailScreen() {
         {/* QR Code Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>QR Code</Text>
-          <View style={styles.qrContainer}>
-            {book && qrCodeValue ? ( // ADDED: Conditional rendering for QrCodeSvg
-              <QrCodeSvg
-                value={qrCodeValue}
-                size={200}
-                color="black"
-                backgroundColor="white"
-              />
+          <View style={styles.qrCodeDisplayContainer}>
+            {book && qrCodeValue ? (
+              <View ref={qrCodeRef}>
+                <QrCodeSvg
+                  value={qrCodeValue}
+                  size={200}
+                  color="black"
+                  backgroundColor="white"
+                />
+              </View>
             ) : (
               <Text style={styles.qrCodePlaceholder}>QR Code not available</Text>
             )}
+            <TouchableOpacity style={styles.saveQrButton} onPress={handleSaveQrCode}>
+              <Text style={styles.saveQrButtonText}>Save QR Code</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -718,6 +753,29 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
+  qrCodeDisplayContainer: {
+    alignItems: 'center',
+    gap: 16,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+  },
+  saveQrButton: {
+    backgroundColor: '#d4a5b8',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  saveQrButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  qrCodePlaceholder: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
   qrContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -731,10 +789,7 @@ const styles = StyleSheet.create({
     color: '#333',
     fontFamily: 'monospace',
   },
-  qrCodePlaceholder: {
-    fontSize: 16,
-    color: '#666',
-  },
+
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
