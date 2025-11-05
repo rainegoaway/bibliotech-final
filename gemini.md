@@ -169,3 +169,30 @@ Implemented a comprehensive feature for handling overdue books with the followin
     *   **QR Code Scanning (Admin - `client/app/admin/qr-scanner.tsx`):**
         *   Implemented similar camera permission request and scanning logic as the student version.
         *   Navigates to `student/book-view/[id]` upon successful scan, as per current requirements.
+
+### 7. Reservation Cancellation `ReferenceError` Fix
+
+*   **Issue:** Encountered `ReferenceError: Borrow is not defined` when attempting to cancel a reservation.
+*   **Fix:** Imported the `Borrow` model into `server/controllers/reservationController.js` to resolve the undefined reference.
+
+### 8. Prevent Reserving Borrowed Books (Frontend Logic)
+
+*   **Issue:** Users could reserve a book they currently had borrowed, leading to potential errors and incorrect UI states. The `userBorrow` state in the frontend was not updating correctly after a book was borrowed.
+*   **Analysis:** The `checkUserBorrowStatus` function in `client/app/student/book-view/[id].tsx` was checking for borrow statuses of `'borrowed'` or `'overdue'`, while the backend was returning `'active'` for currently borrowed books. This mismatch prevented `userBorrow` from being correctly populated.
+*   **Fix:** Modified `client/app/student/book-view/[id].tsx` to update the `checkUserBorrowStatus` function to correctly identify active borrows by checking for a status of `'active'`. This ensures the `userBorrow` state is accurate, allowing the UI to correctly display the "Renew" button and prevent reserving an already borrowed book.
+
+## Expo Barcode Scanner Build Failure and WSL Permission Issues
+
+*   **Initial Problem:** The `expo-barcode-scanner` build was failing, which was preventing the QR code scanning functionality from working.
+*   **Attempted Fixes:**
+    *   `sudo npx expo install --fix` was attempted, but it failed with an `EACCES` permission error.
+    *   A clean reinstall of the `client` directory's `node_modules` and `package-lock.json` was performed.
+    *   `npm install` was run again, but it also failed with an `EACCES` error.
+    *   The npm cache was cleared using `npm cache clean --force`.
+    *   `npm install --no-bin-links` was attempted, but it also failed with the same `EACCES` error.
+*   **Root Cause Analysis:** The persistent `EACCES` errors strongly suggest a fundamental issue with file permissions within the WSL environment. The way the Windows filesystem is mounted in WSL is likely not handling Linux file permissions correctly, which causes `npm` to fail when it tries to perform file operations like renaming directories.
+*   **Proposed Solution:** The recommended solution is to modify the `/etc/wsl.conf` file to enable metadata handling for the automount option. This will allow WSL to store and manage Linux permissions more effectively on the Windows filesystem. The user has been instructed to add the following to `/etc/wsl.conf` and then restart WSL:
+    ```
+    [automount]
+    options = "metadata"
+    ```

@@ -5,8 +5,7 @@ import { ArrowLeft, BookOpen, MapPin, Hash, Calendar, AlertCircle } from 'lucide
 import api from '../../../src/services/api';
 import { getUserData } from '../../../src/utils/storage';
 import QrCodeSvg from 'react-native-qrcode-svg';
-import * as MediaLibrary from 'expo-media-library';
-import { captureRef } from 'react-native-view-shot';
+
 
 interface BookDetails {
   id: number;
@@ -52,7 +51,7 @@ export default function BookDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
-  const qrCodeRef = useRef<View>(null);
+
 
   // ADDED: Base URL for QR code generation
   const APP_BASE_URL = 'exp://192.168.1.5:8081/--/student/book-view'; // Replace with your actual Expo dev URL or production URL
@@ -115,28 +114,7 @@ export default function BookDetailScreen() {
     }
   };
 
-  const handleSaveQrCode = async () => {
-    if (qrCodeRef.current) {
-      try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Please grant media library permissions to save the QR code.');
-          return;
-        }
 
-        const uri = await captureRef(qrCodeRef, {
-          format: 'png',
-          quality: 1,
-        });
-
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('Success', 'QR Code saved to gallery!');
-      } catch (e) {
-        console.error('Failed to save QR code', e);
-        Alert.alert('Error', 'Failed to save QR code.');
-      }
-    }
-  };
 
 
 
@@ -494,7 +472,7 @@ export default function BookDetailScreen() {
           <Text style={styles.sectionTitle}>QR Code</Text>
           <View style={styles.qrCodeDisplayContainer}>
             {book && qrCodeValue ? (
-              <View ref={qrCodeRef}>
+              <View>
                 <QrCodeSvg
                   value={qrCodeValue}
                   size={200}
@@ -505,9 +483,7 @@ export default function BookDetailScreen() {
             ) : (
               <Text style={styles.qrCodePlaceholder}>QR Code not available</Text>
             )}
-            <TouchableOpacity style={styles.saveQrButton} onPress={handleSaveQrCode}>
-              <Text style={styles.saveQrButtonText}>Save QR Code</Text>
-            </TouchableOpacity>
+
           </View>
         </View>
 
