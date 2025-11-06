@@ -342,6 +342,7 @@ export default function ProfileScreen() {
 
       <ScrollView 
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: 60 }} // Add padding for the bottom navigation
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#a8c9a0']} />}
       >
         {/* User Info Card */}

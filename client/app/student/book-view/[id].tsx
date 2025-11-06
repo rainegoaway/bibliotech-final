@@ -557,7 +557,7 @@ export default function BookDetailScreen() {
             <View style={styles.chipContainer}>
               {book.subjects.map((subject) => (
                 <View key={subject.id} style={styles.subjectChip}>
-                  <Text style={styles.chipText}>{subject.code}</Text>
+                  <Text style={styles.chipText}>{subject.name}</Text>
                 </View>
               ))}
             </View>
