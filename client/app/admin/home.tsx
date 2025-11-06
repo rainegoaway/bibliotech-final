@@ -49,13 +49,7 @@ export default function AdminHomeScreen() {
         </View>
       </View>
 
-      {/* Notification Button */}
-      <TouchableOpacity 
-        style={styles.notificationButton}
-        onPress={() => router.push('/admin/notifications')}
-      >
-        <Bell size={24} color="#000" />
-      </TouchableOpacity>
+
 
       {/* Main Content */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

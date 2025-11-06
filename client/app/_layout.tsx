@@ -3,7 +3,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useState, useEffect, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
 import { notificationsAPI } from '@/src/services/api';
-import { getToken } from '@/src/utils/storage';
+import { getToken, getUserData } from '@/src/utils/storage';
 import * as SystemUI from 'expo-system-ui';
 
 export default function RootLayout() {
@@ -20,8 +20,10 @@ export default function RootLayout() {
     const fetchNotifications = async () => {
       try {
         const token = await getToken();
-        if (!token) {
-          // User is not logged in, do not fetch notifications
+        const userData = await getUserData();
+
+        if (!token || (userData && userData.role !== 'student')) {
+          // User is not logged in or is not a student, do not fetch notifications
           setUnreadNotificationsCount(0);
           initialFetchDone.current = true;
           return;
@@ -60,7 +62,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="admin/home" />
-        <Stack.Screen name="admin/notifications" />
+
         <Stack.Screen name="admin/account-management" />
         <Stack.Screen name="admin/book-management" />
         <Stack.Screen name="admin/qr-scanner" />
