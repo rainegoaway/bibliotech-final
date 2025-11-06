@@ -153,6 +153,32 @@ class Subject {
     );
     return subjects;
   }
+
+  // Set user's subjects
+  static async setUserSubjects(userId, subjectIds) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Delete existing subjects for the user
+      await connection.query('DELETE FROM user_subjects WHERE user_id = ?', [userId]);
+
+      // Insert new subjects if any are provided
+      if (subjectIds && subjectIds.length > 0) {
+        const values = subjectIds.map(subjectId => [userId, subjectId]);
+        await connection.query('INSERT INTO user_subjects (user_id, subject_id) VALUES ?', [values]);
+      }
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      console.error('Failed to set user subjects:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
 }
 
 module.exports = Subject;

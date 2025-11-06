@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
-type StatusType = 'all' | 'available' | 'borrowed' | 'reserved' | 'maintenance';
+type StatusType = 'all' | 'available' | 'borrowed' | 'reserved' | 'overdue';
 
 interface StatusFilterProps {
   selectedStatus: StatusType;
@@ -15,7 +15,7 @@ export default function StatusFilter({ selectedStatus, onStatusChange }: StatusF
     { key: 'available', label: 'Available' },
     { key: 'borrowed', label: 'Borrowed' },
     { key: 'reserved', label: 'Reserved' },
-    { key: 'maintenance', label: 'Maintenance' },
+    { key: 'overdue', label: 'Overdue' },
   ];
 
   return (

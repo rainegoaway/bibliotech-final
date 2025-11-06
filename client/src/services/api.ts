@@ -124,6 +124,9 @@ export const subjectsAPI = {
   getMySubjects: () =>
     api.get('/subjects/my-subjects'),
   
+  setMySubjects: (subjectIds: number[]) =>
+    api.put('/subjects/my-subjects', { subjectIds }),
+  
   getCourses: () =>
     api.get('/subjects/courses'),
 };

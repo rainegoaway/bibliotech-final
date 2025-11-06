@@ -36,9 +36,10 @@ interface Book {
   current_borrower_id?: number;
   genre_names?: string;
   subject_names?: string;
+  is_overdue?: boolean;
 }
 
-type StatusFilter = 'all' | 'available' | 'borrowed' | 'reserved' | 'maintenance';
+type StatusFilter = 'all' | 'available' | 'borrowed' | 'reserved' | 'overdue';
 
 export default function BooksManagementScreen() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -88,7 +89,11 @@ export default function BooksManagementScreen() {
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter((book) => book.status === statusFilter);
+      if (statusFilter === 'overdue') {
+        filtered = filtered.filter((book) => book.is_overdue);
+      } else {
+        filtered = filtered.filter((book) => book.status === statusFilter);
+      }
     }
 
     // Search filter

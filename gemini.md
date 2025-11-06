@@ -227,3 +227,20 @@ Implemented a comprehensive feature for handling overdue books with the followin
 ## Clarification on 'student' vs 'user' paths
 
 *   **Clarification:** The discussion regarding changing "student" paths to "user" paths was ultimately not implemented. All frontend paths and components continue to use "student" (e.g., `client/app/student`, `client/components/student`).
+
+## Settings Screen - User Preferences
+
+*   **Goal:** Allow users to edit their subject and genre preferences from the settings screen.
+*   **Backend Changes:**
+    *   **Refactored Subject Endpoints:** To avoid code duplication, the logic for setting user subjects was moved from the `User` model and controller to the `Subject` model and a new `SubjectController`.
+    *   Created `server/controllers/subjectController.js` to handle all subject-related business logic.
+    *   Updated `server/routes/subjects.js` to use the new `SubjectController` and added a `PUT /api/subjects/my-subjects` endpoint for updating user subjects.
+    *   Removed the now-redundant subject-related methods and routes from the user model, controller, and routes.
+*   **Frontend Changes (`client/app/student/settings.tsx`):**
+    *   **UI:** Implemented a new settings screen with multi-select options for both subjects and genres.
+    *   **Data Fetching:** The screen fetches all available subjects and genres, as well as the user's current preferences, on component mount.
+    *   **Update Logic:** A "Save" button sends the updated selections to the `PUT /api/subjects/my-subjects` and `PUT /api/genres/my-genres` endpoints.
+*   **Bug Fix (400 Bad Request):**
+    *   **Issue:** Saving preferences resulted in a `400 Bad Request` error.
+    *   **Analysis:** The error was caused by a backend validation rule in the `genreController` that required users to select between 3 and 5 genres. The frontend was not enforcing this rule.
+    *   **Fix:** Added frontend validation to the `settings.tsx` screen. The "Save" button is now disabled, and an informative message is displayed if the user has not selected between 3 and 5 genres.

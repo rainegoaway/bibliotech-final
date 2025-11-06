@@ -16,7 +16,11 @@ class Book {
       SELECT DISTINCT b.*, 
              GROUP_CONCAT(DISTINCT g.name) as genre_names,
              GROUP_CONCAT(DISTINCT s.name) as subject_names,
-             br.due_date
+             br.due_date,
+             CASE
+               WHEN b.status = 'borrowed' AND br.due_date < NOW() THEN TRUE
+               ELSE FALSE
+             END AS is_overdue
       FROM books b
       LEFT JOIN book_genres bg ON b.id = bg.book_id
       LEFT JOIN genres g ON bg.genre_id = g.id
