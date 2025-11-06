@@ -16,8 +16,10 @@ const borrowRoutes = require('./routes/borrows');
 const reservationRoutes = require('./routes/reservations');
 const subjectRoutes = require('./routes/subjects');
 const genreRoutes = require('./routes/genres');
+const publicRoutes = require('./routes/public');
 
 // Register routes
+app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);     
 app.use('/api/books', bookRoutes);

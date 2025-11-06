@@ -196,3 +196,13 @@ Implemented a comprehensive feature for handling overdue books with the followin
     [automount]
     options = "metadata"
     ```
+
+## QR Code Save-to-Gallery Feature Removal
+
+*   **Issue:** After resolving the `expo-barcode-scanner` build issues, the user clarified that the remaining problem was with a feature intended to save the generated QR code to the phone's gallery. This feature was not working correctly and causing frustration.
+*   **Resolution:** Per the user's request, the "save to gallery" functionality was completely removed from the application to simplify the feature set and resolve the issue.
+*   **Code Changes (`client/app/student/book-view/[id].tsx`):**
+    *   Removed imports for `expo-media-library` and `react-native-view-shot`.
+    *   Removed the `handleSaveQrCode` function, which contained the logic for saving the image.
+    *   Removed the "Save QR Code" button from the user interface.
+    *   Removed the `qrCodeRef` that was used to capture the QR code view, and fixed a subsequent `ReferenceError` by also removing the `ref` prop from the `View` component.

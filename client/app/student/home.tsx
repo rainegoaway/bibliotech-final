@@ -12,22 +12,39 @@ import {
 } from 'lucide-react-native';
 import { getUserData, removeToken } from '../../src/utils/storage';
 import api from '../../src/services/api';
-import GenreTabs from '../../components/student/GenreTabs';
+import FilterModal from '../../components/student/FilterModal';
 import UserNavBar from '../../components/student/UserNavBar';
 
 export default function StudentHomeScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
   const [allBooks, setAllBooks] = useState<any[]>([]);
-  const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [loading, setLoading] = useState(true);
-  const [userGenres, setUserGenres] = useState<any[]>([]);
-  const [allGenres, setAllGenres] = useState<any[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [filters, setFilters] = useState<{ genre: string; subject: string }>({
+    genre: 'All',
+    subject: 'All',
+  });
+  const [filteredBooks, setFilteredBooks] = useState<any[]>([]);
 
   useEffect(() => {
     loadUserData();
     loadBooks();
   }, []);
+
+  useEffect(() => {
+    let books = allBooks;
+
+    if (filters.genre !== 'All') {
+      books = books.filter((book) => book.genre_names?.includes(filters.genre));
+    }
+
+    if (filters.subject !== 'All') {
+      books = books.filter((book) => book.subject_names?.includes(filters.subject));
+    }
+
+    setFilteredBooks(books);
+  }, [allBooks, filters]);
 
   const loadUserData = async () => {
     const data = await getUserData();
@@ -44,14 +61,9 @@ export default function StudentHomeScreen() {
 
       setAllBooks(books);
 
-      // ✅ Load all genres from API
-      const genreResponse = await api.get('/genres');
-      setAllGenres(genreResponse.data.genres || genreResponse.data || []);
-
     } catch (error) {
       console.log('Error loading data:', error);
       setAllBooks([]);
-      setAllGenres([]);
     } finally {
       setLoading(false);
     }
@@ -63,15 +75,9 @@ export default function StudentHomeScreen() {
     router.replace('/');
   };
 
-  // Re-introduced getFilteredBooks, now only dependent on selectedGenre
-  const getFilteredBooks = () => {
-    if (selectedGenre === 'All') {
-      return allBooks;
-    }
-    return allBooks.filter(book => book.genre === selectedGenre);
+  const handleApplyFilter = (newFilters: { genre: string; subject: string }) => {
+    setFilters(newFilters);
   };
-
-  const filteredBooks = getFilteredBooks(); // filteredBooks is now correctly defined
 
   return (
     <View style={styles.container}>
@@ -109,14 +115,12 @@ export default function StudentHomeScreen() {
         {/* Search Bar Section */}
         <View style={styles.searchSection}>
           <View style={styles.searchContainer}>
-            {/*
-             <TouchableOpacity 
+            <TouchableOpacity 
               style={styles.filterButton}
-              onPress={() => }
+              onPress={() => setModalVisible(true)}
             >
-              <Text style={styles.filterText}>filter</Text>
-            </TouchableOpacity> 
-            */}
+              <Text style={styles.filterText}>Filter</Text>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.searchInputContainer}
               onPress={() => router.push('/student/search' as any)}
@@ -131,15 +135,6 @@ export default function StudentHomeScreen() {
               <QrCode size={28} color="#000" />
             </TouchableOpacity>
           </View>
-
-          {/* Genre Tabs */}
-            <GenreTabs
-              allGenres={allGenres}
-              selectedGenre={selectedGenre}
-              onSelectGenre={setSelectedGenre}
-            />
-
-
         </View>
 
         {/* Preferences Section */}
@@ -181,6 +176,12 @@ export default function StudentHomeScreen() {
           </ScrollView>
         </View>
       </ScrollView>
+
+      <FilterModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onApply={handleApplyFilter}
+      />
 
       {/* Bottom Navigation */}
       <UserNavBar />
