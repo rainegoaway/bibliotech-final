@@ -1,13 +1,20 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { notificationsAPI } from '@/src/services/api';
 import { getToken } from '@/src/utils/storage';
+import * as SystemUI from 'expo-system-ui';
 
 export default function RootLayout() {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const initialFetchDone = useRef(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      SystemUI.setBackgroundColorAsync('#f5f5f5');
+    }
+  }, []);
 
   useEffect(() => {
     const fetchNotifications = async () => {
