@@ -365,7 +365,7 @@ export default function ProfileScreen() {
             <Text style={styles.sectionLabel}>Linked Subjects</Text>
             <Text style={styles.infoText}>
               {profile?.subjects && profile.subjects.length > 0
-                ? profile.subjects.map((s: Subject) => s.code).join(', ')
+                ? profile.subjects.map((s: Subject) => s.name).join(', ')
                 : 'No subjects linked'}
             </Text>
           </View>
