@@ -352,7 +352,7 @@ const CreateBookModal: React.FC<CreateBookModalProps> = ({ visible, onClose, onS
                           formData.subject_ids.includes(subject.id) && styles.chipTextActive,
                         ]}
                       >
-                        {subject.code}
+                        {subject.name}
                       </Text>
                     </TouchableOpacity>
                   ))}

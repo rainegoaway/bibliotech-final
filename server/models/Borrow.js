@@ -13,14 +13,26 @@ class Borrow {
   }
 
   // Get user's active borrows
-  static async findActiveByUserId(user_id) {
-    const [borrows] = await db.query(
+  static async findActiveByUserId(user_id, connection = db) {
+    const [borrows] = await connection.query(
       `SELECT b.*, bk.title, bk.author, bk.cover_image_url
        FROM borrows b
        JOIN books bk ON b.book_id = bk.id
        WHERE b.user_id = ? AND b.status = 'active'
        ORDER BY b.due_date ASC`,
       [user_id]
+    );
+    return borrows;
+  }
+
+  // Get borrows due in 1 day
+  static async findSoonDue() {
+    const [borrows] = await db.query(
+      `SELECT b.*, u.name as user_name, bk.title as book_title
+       FROM borrows b
+       JOIN users u ON b.user_id = u.id
+       JOIN books bk ON b.book_id = bk.id
+       WHERE b.status = 'active' AND DATE(b.due_date) = DATE(DATE_ADD(NOW(), INTERVAL 1 DAY))`
     );
     return borrows;
   }
@@ -49,18 +61,18 @@ class Borrow {
   }
 
   // Renew borrow
-  // Renew a borrow (extend due date by 1 day)
-static async renew(borrowId) {
+  // Renew a borrow (extend due date by specified days)
+static async renew(connection, borrowId, daysToExtend) {
   const query = `
     UPDATE borrows 
-    SET due_date = DATE_ADD(due_date, INTERVAL 1 DAY),
+    SET due_date = DATE_ADD(due_date, INTERVAL ? DAY),
         renewal_count = renewal_count + 1,
         last_renewed_date = NOW(),
         updated_at = NOW()
     WHERE id = ? AND status = 'active'
   `;
   
-  const [result] = await db.query(query, [borrowId]);
+  const [result] = await connection.query(query, [daysToExtend, borrowId]);
   return result.affectedRows > 0;
 }
 
@@ -74,6 +86,23 @@ static async renew(borrowId) {
        WHERE b.status = 'active' AND b.due_date < NOW()`
     );
     return borrows;
+  }
+
+  // Calculate fine for a borrow
+  static async calculateFine(borrowId) {
+    const [rows] = await db.query(
+      `SELECT DATEDIFF(NOW(), due_date) AS days_overdue
+       FROM borrows
+       WHERE id = ? AND status = 'active' AND due_date < NOW()`,
+      [borrowId]
+    );
+
+    if (rows.length > 0) {
+      const daysOverdue = rows[0].days_overdue;
+      // Fine is 5 pesos per day, starting on the first day overdue
+      return daysOverdue * 5;
+    }
+    return 0;
   }
 
   // ============================================
@@ -222,7 +251,7 @@ static async findAll() {
 }
 
 // Find borrow by ID (single borrow record by its ID)
-static async findById(borrowId) {
+static async findById(borrowId, connection = db) {
   const query = `
     SELECT b.*, 
            bk.title, bk.author, bk.qr_code,
@@ -233,7 +262,7 @@ static async findById(borrowId) {
     WHERE b.id = ?
     LIMIT 1
   `;
-  const [rows] = await db.query(query, [borrowId]);
+  const [rows] = await connection.query(query, [borrowId]);
   return rows[0] || null;
 }
 

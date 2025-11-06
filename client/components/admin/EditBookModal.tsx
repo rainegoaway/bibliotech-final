@@ -424,7 +424,7 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ visible, onClose, onSucce
                           formData.subject_ids.includes(subject.id) && styles.chipTextActive,
                         ]}
                       >
-                        {subject.code}
+                        {subject.name}
                       </Text>
                     </TouchableOpacity>
                   ))}

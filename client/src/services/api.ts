@@ -168,4 +168,11 @@ export const reservationsAPI = {
     api.delete(`/reservations/${reservationId}`),
 };
 
+export const notificationsAPI = {
+  getNotifications: () =>
+    api.get('/notifications'),
+  markNotificationAsRead: (id: number) =>
+    api.post(`/notifications/${id}/read`),
+};
+
 export default api;

@@ -5,6 +5,7 @@ const Borrow = require('../models/Borrow');
 const Book = require('../models/Book');
 const User = require('../models/User');
 const Reservation = require('../models/Reservation');
+const Notification = require('../models/Notification');
 const db = require('../config/database');
 
 class BorrowController {
@@ -23,7 +24,7 @@ class BorrowController {
       console.log('📥 Borrow request - User:', userId, 'Book:', bookId);
 
       // 1. Check if book exists
-      const book = await Book.findById(bookId);
+      const book = await Book.findById(bookId, connection);
       if (!book) {
         await connection.rollback();
         return res.status(404).json({ error: 'Book not found' });
@@ -32,7 +33,7 @@ class BorrowController {
       console.log('📚 Book status:', book.status);
 
       // 2. Check if user has overdue books
-      const hasOverdue = await User.updateOverdueStatus(userId);
+      const hasOverdue = await User.updateOverdueStatus(userId, connection);
       if (hasOverdue) {
         await connection.rollback();
         return res.status(403).json({ 
@@ -41,7 +42,7 @@ class BorrowController {
       }
 
       // 3. Check if user already has this book borrowed
-      const activeborrows = await Borrow.findActiveByUserId(userId);
+      const activeborrows = await Borrow.findActiveByUserId(userId, connection);
       const alreadyBorrowed = activeborrows.some(b => b.book_id == bookId);
       if (alreadyBorrowed) {
         await connection.rollback();
@@ -57,7 +58,7 @@ class BorrowController {
         
       } else if (book.status === 'reserved') {
         // Check if this user is the reserver with a 'ready' reservation
-        const reservation = await Reservation.findActiveReservationByBookId(bookId);
+        const reservation = await Reservation.findActiveReservationByBookId(bookId, connection);
         
         if (!reservation || reservation.status !== 'ready') {
           await connection.rollback();
@@ -101,6 +102,7 @@ class BorrowController {
 
       // 5. Create borrow record
       const borrowId = await Borrow.create(connection, userId, bookId);
+      const borrowRecord = await Borrow.findById(borrowId, connection);
 
       // 6. Update book status to borrowed
       await connection.query(
@@ -111,6 +113,16 @@ class BorrowController {
       await connection.commit();
       
       console.log('✅ Book borrowed successfully');
+
+      // Create notification for the user
+      const notificationId = await Notification.create({
+        userId: userId,
+        type: 'borrow',
+        title: 'Book Borrowed!',
+        message: `You have successfully borrowed \'${book.title}\'. It is due on ${new Date(borrowRecord.due_date).toLocaleDateString()}.`,
+        relatedBookId: bookId,
+        relatedBorrowId: borrowId,
+      }, connection);
 
       res.status(201).json({
         message: book.status === 'reserved' 
@@ -149,9 +161,9 @@ class BorrowController {
       // Get the borrow record
       let borrow;
       if (isAdmin) {
-        borrow = await Borrow.findById(borrowId);
+        borrow = await Borrow.findById(borrowId, connection);
       } else {
-        const borrows = await Borrow.findActiveByUserId(userId);
+        const borrows = await Borrow.findActiveByUserId(userId, connection);
         borrow = borrows.find(b => b.id == borrowId);
       }
       
@@ -171,7 +183,7 @@ class BorrowController {
       await Borrow.return(connection, borrowId);
       
       // Check if book has a pending reservation
-      const reservation = await Reservation.findActiveReservationByBookId(borrow.book_id);
+      const reservation = await Reservation.findActiveReservationByBookId(borrow.book_id, connection);
       
       if (reservation) {
         console.log('⏳ Book has pending reservation by user:', reservation.user_id);
@@ -185,6 +197,16 @@ class BorrowController {
           'UPDATE reservations SET status = "ready", ready_date = NOW() WHERE id = ?',
           [reservation.id]
         );
+
+        // Create notification for the reserving user
+        await Notification.create({
+          userId: reservation.user_id,
+          type: 'reservation',
+          title: 'Reserved Book Available!',
+          message: `The book \'${borrow.title}\' you reserved is now available for pickup. Please claim it within 3 days.`,
+          relatedBookId: borrow.book_id,
+          relatedBorrowId: null, // This is a reservation, not a borrow
+        }, connection);
 
       } else {
         // If there are no pending reservations, update book status to "available"
@@ -223,50 +245,69 @@ class BorrowController {
   // OTHER METHODS (Keep existing implementations)
   // ============================================
   
-  static async renewBook(req, res) {
-    try {
-      const { borrowId } = req.params;
-      const userId = req.user.id;
-
-      const borrows = await Borrow.findActiveByUserId(userId);
-      const borrow = borrows.find(b => b.id == borrowId);
-      
-      if (!borrow) {
-        return res.status(404).json({ error: 'Borrow record not found' });
-      }
-
-      if (borrow.renewal_count >= 99) {
-        return res.status(400).json({ 
-          error: 'Maximum renewal limit reached (99 renewals)'
+    static async renewBook(req, res) {
+      const connection = await db.getConnection();
+      try {
+        await connection.beginTransaction();
+  
+        const { borrowId } = req.params;
+        const userId = req.user.id;
+  
+        const borrow = await Borrow.findById(borrowId, connection);
+  
+        if (!borrow || borrow.user_id !== userId) {
+          await connection.rollback();
+          return res.status(404).json({ error: 'Borrow record not found or access denied.' });
+        }
+  
+        if (borrow.renewal_count >= 99) {
+          await connection.rollback();
+          return res.status(400).json({
+            error: 'Maximum renewal limit reached (99 renewals)'
+          });
+        }
+  
+        const now = new Date();
+        const dueDate = new Date(borrow.due_date);
+        if (now > dueDate) {
+          await connection.rollback();
+          return res.status(400).json({
+            error: 'Cannot renew overdue books. Please return the book.'
+          });
+        }
+  
+        await Borrow.renew(connection, borrowId, 7);
+  
+        // Re-fetch the borrow record to get the updated due_date and book title
+        const updatedBorrow = await Borrow.findById(borrowId, connection);
+  
+        // Create a notification for the renewal
+        const notificationData = {
+          userId: userId,
+          type: 'renewal',
+          title: 'Book Renewed!',
+          message: `You have successfully renewed '${updatedBorrow.title}'. Your new due date is ${new Date(updatedBorrow.due_date).toLocaleDateString()}.`,
+          relatedBookId: updatedBorrow.book_id,
+          relatedBorrowId: borrowId,
+        };
+  
+        await Notification.create(notificationData, connection);
+  
+        await connection.commit();
+  
+        res.json({
+          message: 'Book renewed successfully',
+          newDueDate: updatedBorrow.due_date,
+          renewalsRemaining: 99 - (updatedBorrow.renewal_count + 1)
         });
+      } catch (error) {
+        await connection.rollback();
+        console.error('Renew error:', error);
+        res.status(500).json({ error: 'Failed to renew book' });
+      } finally {
+        connection.release();
       }
-
-      const now = new Date();
-      const dueDate = new Date(borrow.due_date);
-      if (now > dueDate) {
-        return res.status(400).json({ 
-          error: 'Cannot renew overdue books. Please return the book.' 
-        });
-      }
-
-      const success = await Borrow.renew(borrowId);
-      if (!success) {
-        return res.status(400).json({ error: 'Failed to renew book' });
-      }
-
-      const newDueDate = new Date(dueDate.getTime() + 24 * 60 * 60 * 1000);
-
-      res.json({ 
-        message: 'Book renewed successfully',
-        newDueDate: newDueDate,
-        renewalsRemaining: 99 - (borrow.renewal_count + 1)
-      });
-    } catch (error) {
-      console.error('Renew error:', error);
-      res.status(500).json({ error: 'Failed to renew book' });
     }
-  }
-
   static async getMyBorrows(req, res) {
     try {
       const userId = req.user.id;

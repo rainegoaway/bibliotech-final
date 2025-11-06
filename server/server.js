@@ -17,6 +17,8 @@ const reservationRoutes = require('./routes/reservations');
 const subjectRoutes = require('./routes/subjects');
 const genreRoutes = require('./routes/genres');
 const publicRoutes = require('./routes/public');
+const notificationRoutes = require('./routes/notifications');
+const startNotificationScheduler = require('./controllers/notificationScheduler');
 
 // Register routes
 app.use('/api', publicRoutes);
@@ -27,6 +29,7 @@ app.use('/api/borrows', borrowRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/genres', genreRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
@@ -37,4 +40,5 @@ app.get('/api/test', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+  startNotificationScheduler(); // Start the cron job
 });

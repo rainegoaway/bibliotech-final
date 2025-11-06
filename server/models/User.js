@@ -130,20 +130,55 @@ class User {
   }
 
   // Check and update user's overdue status
-  static async updateOverdueStatus(userId) {
-    const [overdueBorrows] = await db.query(
+  static async updateOverdueStatus(userId, connection = db) {
+    const [overdueBorrows] = await connection.query(
       `SELECT COUNT(*) as count FROM borrows WHERE user_id = ? AND status = 'active' AND due_date < NOW()`,
       [userId]
     );
     
     const hasOverdue = overdueBorrows[0].count > 0;
     
-    await db.query(
+    await connection.query(
       'UPDATE users SET has_overdue_books = ? WHERE id = ?',
       [hasOverdue, userId]
     );
     
     return hasOverdue;
+  }
+
+  // Find users by preferred genres or subjects
+  static async findUsersByPreferences(genreIds = [], subjectIds = [], connection = db) {
+    let query = `
+      SELECT DISTINCT u.id, u.name, u.email
+      FROM users u
+    `;
+    const params = [];
+    const whereClauses = [];
+
+    if (genreIds.length > 0) {
+      query += `
+        JOIN user_genres ug ON u.id = ug.user_id
+      `;
+      whereClauses.push(`ug.genre_id IN (${genreIds.map(() => '?').join(', ')})`);
+      params.push(...genreIds);
+    }
+
+    if (subjectIds.length > 0) {
+      query += `
+        JOIN user_subjects us ON u.id = us.user_id
+      `;
+      whereClauses.push(`us.subject_id IN (${subjectIds.map(() => '?').join(', ')})`);
+      params.push(...subjectIds);
+    }
+
+    if (whereClauses.length === 0) {
+      return []; // No preferences to match
+    }
+
+    query += ` WHERE ${whereClauses.join(' OR ')}`;
+
+    const [users] = await connection.query(query, params);
+    return users;
   }
 }
 

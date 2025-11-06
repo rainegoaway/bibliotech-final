@@ -16,8 +16,8 @@ class Reservation {
     return rows;
   }
 
-  static async findActiveReservationByBookId(bookId) {
-    const [rows] = await db.query(
+  static async findActiveReservationByBookId(bookId, connection = db) {
+    const [rows] = await connection.query(
       "SELECT * FROM reservations WHERE book_id = ? AND status IN ('pending', 'ready') ORDER BY reserved_date ASC LIMIT 1",
       [bookId]
     );

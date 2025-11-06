@@ -197,12 +197,29 @@ Implemented a comprehensive feature for handling overdue books with the followin
     options = "metadata"
     ```
 
-## QR Code Save-to-Gallery Feature Removal
+## Home Screen Recommendation View
 
-*   **Issue:** After resolving the `expo-barcode-scanner` build issues, the user clarified that the remaining problem was with a feature intended to save the generated QR code to the phone's gallery. This feature was not working correctly and causing frustration.
-*   **Resolution:** Per the user's request, the "save to gallery" functionality was completely removed from the application to simplify the feature set and resolve the issue.
-*   **Code Changes (`client/app/student/book-view/[id].tsx`):**
-    *   Removed imports for `expo-media-library` and `react-native-view-shot`.
-    *   Removed the `handleSaveQrCode` function, which contained the logic for saving the image.
-    *   Removed the "Save QR Code" button from the user interface.
-    *   Removed the `qrCodeRef` that was used to capture the QR code view, and fixed a subsequent `ReferenceError` by also removing the `ref` prop from the `View` component.
+*   **Goal:** Implement a new recommendation view on the student home screen to provide a more personalized experience.
+*   **Implementation:**
+    *   The student home screen now displays three rows of book recommendations:
+        *   **For You (Subjects):** Books that match the user's saved subject preferences.
+        *   **For You (Genres):** Books that match the user's saved genre preferences.
+        *   **All Books:** A list of all books.
+    *   Each row is a horizontal `ScrollView` with a "See All" button.
+    *   Clicking the "See All" button navigates to a new `BookListScreen` that displays all the books in that category in a vertical list.
+    *   When a filter is applied, the recommendation view is replaced by a single, vertically scrolling list of the filtered books.
+
+### Filter Modal
+
+*   **Goal:** Allow users to filter books by subject and genre.
+*   **Implementation:**
+    *   A "Filter" button has been added to the home screen.
+    *   Clicking the button opens a modal with two sections: "Subjects" and "Genres".
+    *   Users can select a subject and/or genre to filter the book list.
+
+### Bug Fixes
+
+*   **Subject Name Display:** Fixed a bug in the book details view where the subject code was displayed instead of the subject name.
+*   **Profile View Layout:** Fixed a layout issue in the profile view where the content was overlapped by the navigation bar.
+*   **Login Error:** Fixed a 401 Unauthorized error on login that was caused by fetching user data before the user was authenticated.
+*   **Recommendation View Navigation:** Fixed a `ReferenceError` that occurred when clicking on books in the new recommendation view.

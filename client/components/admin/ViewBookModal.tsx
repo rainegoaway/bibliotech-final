@@ -12,8 +12,6 @@ import {
 import { X, BookOpen, MapPin, Calendar, Hash, User } from 'lucide-react-native';
 import QrCodeSvg from 'react-native-qrcode-svg';
 import api from '../../src/services/api';
-import * as MediaLibrary from 'expo-media-library';
-import { captureRef } from 'react-native-view-shot';
 
 interface ViewBookModalProps {
   visible: boolean;
@@ -71,7 +69,6 @@ const ViewBookModal: React.FC<ViewBookModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
-  const qrCodeRef = useRef<View>(null);
 
   // Base URL for QR code generation
   const APP_BASE_URL = 'exp://192.168.1.5:8081/--/student/book-view'; // Replace with your actual Expo dev URL or production URL
@@ -154,29 +151,6 @@ const fetchBookDetails = async () => {
     setLoading(false);
   }
 };
-
-  const handleSaveQrCode = async () => {
-    if (qrCodeRef.current) {
-      try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Please grant media library permissions to save the QR code.');
-          return;
-        }
-
-        const uri = await captureRef(qrCodeRef, {
-          format: 'png',
-          quality: 1,
-        });
-
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('Success', 'QR Code saved to gallery!');
-      } catch (e) {
-        console.error('Failed to save QR code', e);
-        Alert.alert('Error', 'Failed to save QR code.');
-      }
-    }
-  };
 
   const handleReturnBook = async () => {
     if (!activeBorrow || !book) return;
@@ -354,20 +328,15 @@ const fetchBookDetails = async () => {
           <Text style={styles.sectionTitle}>QR Code</Text>
           <View style={styles.qrCodeDisplayContainer}>
             {book && book.qr_code ? (
-              <View ref={qrCodeRef}>
-                <QrCodeSvg
-                  value={`${APP_BASE_URL}/${book.id}`}
-                  size={150}
-                  color="#000"
-                  backgroundColor="#fff"
-                />
-              </View>
+              <QrCodeSvg
+                value={`${APP_BASE_URL}/${book.id}`}
+                size={150}
+                color="#000"
+                backgroundColor="#fff"
+              />
             ) : (
               <Text>No QR Code available</Text>
             )}
-            <TouchableOpacity style={styles.saveQrButton} onPress={handleSaveQrCode}>
-              <Text style={styles.saveQrButtonText}>Save QR Code</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -441,7 +410,7 @@ const fetchBookDetails = async () => {
             <View style={styles.chipContainer}>
               {book.subjects.map((subject) => (
                 <View key={subject.id} style={styles.subjectChip}>
-                  <Text style={styles.chipText}>{subject.code}</Text>
+                  <Text style={styles.chipText}>{subject.name}</Text>
                 </View>
               ))}
             </View>
@@ -791,17 +760,6 @@ fineInfo: {
     padding: 20,
     backgroundColor: '#f5f5f5',
     borderRadius: 12,
-  },
-  saveQrButton: {
-    backgroundColor: '#d4a5b8',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  saveQrButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 export default ViewBookModal;

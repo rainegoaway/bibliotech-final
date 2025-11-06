@@ -2,6 +2,7 @@ const Reservation = require('../models/Reservation');
 const Book = require('../models/Book');
 const User = require('../models/User');
 const Borrow = require('../models/Borrow'); // ADDED: Import Borrow model
+const Notification = require('../models/Notification');
 const db = require('../config/database');
 
 class ReservationController {
@@ -80,6 +81,16 @@ class ReservationController {
       await connection.commit();
       
       console.log('✅ Reservation created:', reservationId);
+
+      // Create notification for the user
+      await Notification.create({
+        userId: userId,
+        type: 'reservation',
+        title: 'Book Reserved!',
+        message: `You have successfully reserved \'${book.title}\'. You will be notified when it is available for pickup.`,
+        relatedBookId: bookId,
+        relatedBorrowId: null,
+      }, connection);
 
       res.status(201).json({
         message: 'Book reserved successfully. You will be notified when available.',

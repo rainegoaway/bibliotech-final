@@ -1,6 +1,9 @@
 // CONTROLLER - Handles book management logic
 // ============================================
 const Book = require('../models/Book');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
+const db = require('../config/database');
 
 class BookController {
   // Get all books with filters
@@ -82,65 +85,99 @@ class BookController {
   }
 
   // Create new book (admin only)
-  static async createBook(req, res) {
-    try {
-      const { 
-        title, 
-        author, 
-        isbn, 
-        publication_year,
-        publisher,
-        pages,
-        synopsis, 
-        shelf_location,
-        genre_ids,
-        subject_ids 
-      } = req.body;
-
-      // Validation
-      if (!title || !title.trim()) {
-        return res.status(400).json({ error: 'Title is required' });
+    static async createBook(req, res) {
+      const connection = await db.getConnection();
+      try {
+        await connection.beginTransaction();
+  
+        const {
+          title,
+          author,
+          isbn,
+          publication_year,
+          publisher,
+          pages,
+          synopsis,
+          shelf_location,
+          genre_ids,
+          subject_ids
+        } = req.body;
+  
+        // Validation
+        if (!title || !title.trim()) {
+          await connection.rollback();
+          return res.status(400).json({ error: 'Title is required' });
+        }
+  
+        if (!author || !author.trim()) {
+          await connection.rollback();
+          return res.status(400).json({ error: 'Author is required' });
+        }
+  
+        if (!shelf_location || !shelf_location.trim()) {
+          await connection.rollback();
+          return res.status(400).json({ error: 'Shelf location is required' });
+        }
+  
+        console.log('📚 Creating book:', title);
+  
+        const result = await Book.create({
+          title: title.trim(),
+          author: author.trim(),
+          isbn: isbn?.trim() || null,
+          publication_year: publication_year || null,
+          publisher: publisher?.trim() || null,
+          pages: pages || null,
+          synopsis: synopsis?.trim() || null,
+          shelf_location: shelf_location.trim(),
+          genre_ids: genre_ids || [],
+          subject_ids: subject_ids || []
+        }, connection);
+  
+        console.log('✅ Book created:', result);
+  
+        // Notify users with matching preferences
+        const { genres, subjects } = await Book.getBookGenresAndSubjects(result.bookId, connection);
+        const genreIds = genres.map(g => g.id);
+        const subjectIds = subjects.map(s => s.id);
+  
+        const notificationsToCreate = [];
+        if (genreIds.length > 0 || subjectIds.length > 0) {
+          const interestedUsers = await User.findUsersByPreferences(genreIds, subjectIds, connection);
+          for (const user of interestedUsers) {
+            notificationsToCreate.push({
+              userId: user.id,
+              type: 'new_book',
+              title: 'New Book Alert!',
+              message: `A new book, \'${title}\' by ${author}, matching your preferences has been added to the library!`,
+              relatedBookId: result.bookId,
+              relatedBorrowId: null,
+            });
+          }
+        }
+  
+        if (notificationsToCreate.length > 0) {
+          await Notification.create(notificationsToCreate, connection);
+        }
+  
+        await connection.commit();
+  
+        res.status(201).json({
+          message: 'Book added successfully',
+          bookId: result.bookId,
+          qr_code: result.qr_code
+        });
+      } catch (error) {
+        await connection.rollback();
+        console.error('❌ Create book error:', error);
+        res.status(500).json({
+          error: 'Failed to add book',
+          details: error.message
+        });
+      } finally {
+        connection.release();
       }
-
-      if (!author || !author.trim()) {
-        return res.status(400).json({ error: 'Author is required' });
-      }
-
-      if (!shelf_location || !shelf_location.trim()) {
-        return res.status(400).json({ error: 'Shelf location is required' });
-      }
-
-      console.log('📚 Creating book:', title);
-
-      const result = await Book.create({
-        title: title.trim(),
-        author: author.trim(),
-        isbn: isbn?.trim() || null,
-        publication_year: publication_year || null,
-        publisher: publisher?.trim() || null,
-        pages: pages || null,
-        synopsis: synopsis?.trim() || null,
-        shelf_location: shelf_location.trim(),
-        genre_ids: genre_ids || [],
-        subject_ids: subject_ids || []
-      });
-
-      console.log('✅ Book created:', result);
-
-      res.status(201).json({
-        message: 'Book added successfully',
-        bookId: result.bookId,
-        qr_code: result.qr_code
-      });
-    } catch (error) {
-      console.error('❌ Create book error:', error);
-      res.status(500).json({ 
-        error: 'Failed to add book',
-        details: error.message 
-      });
     }
-  }
-
   // Update book (admin only)
   static async updateBook(req, res) {
     try {
