@@ -223,3 +223,7 @@ Implemented a comprehensive feature for handling overdue books with the followin
 *   **Profile View Layout:** Fixed a layout issue in the profile view where the content was overlapped by the navigation bar.
 *   **Login Error:** Fixed a 401 Unauthorized error on login that was caused by fetching user data before the user was authenticated.
 *   **Recommendation View Navigation:** Fixed a `ReferenceError` that occurred when clicking on books in the new recommendation view.
+
+## Clarification on 'student' vs 'user' paths
+
+*   **Clarification:** The discussion regarding changing "student" paths to "user" paths was ultimately not implemented. All frontend paths and components continue to use "student" (e.g., `client/app/student`, `client/components/student`).

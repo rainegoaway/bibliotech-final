@@ -39,19 +39,6 @@ export default function UserNavBar() {
       
       <TouchableOpacity 
         style={styles.navItem}
-        onPress={() => router.push('/student/focus-timer')}
-      >
-        {isActive('/student/focus-timer') ? (
-          <View style={styles.navIconActive}>
-            <Clock size={24} color="#fff" />
-          </View>
-        ) : (
-          <Clock size={24} color="#4a4a4a" />
-        )}
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={styles.navItem}
         onPress={() => router.push('/student/profile')}
       >
         {isActive('/student/profile') ? (
