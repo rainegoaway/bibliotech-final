@@ -217,7 +217,7 @@ const handleSubmit = async () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Role *</Text>
               <View style={styles.roleContainer}>
-                {['student', 'teacher', 'admin'].map((role) => (
+                {['student', 'admin'].map((role) => (
                   <TouchableOpacity
                     key={role}
                     style={[

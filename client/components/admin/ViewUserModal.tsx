@@ -88,8 +88,18 @@ const ViewUserModal: React.FC<ViewUserModalProps> = ({ visible, onClose, user })
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) {
+      return 'N/A'; // Or some other placeholder for missing date
+    }
+    // Ensure the date string is in a format Date constructor can reliably parse (e.g., ISO 8601)
+    // Assuming dateString is like "YYYY-MM-DD HH:mm:ss", convert to "YYYY-MM-DDTHH:mm:ssZ"
+    const date = new Date(dateString.replace(' ', 'T') + 'Z');
+    // Check if the date is valid before formatting
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date'; // Or handle as appropriate
+    }
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

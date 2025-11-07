@@ -28,9 +28,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.log('Unauthorized - token may be expired');
-    }
+    // Temporarily disabled error logging for demo purposes
     return Promise.reject(error);
   }
 );

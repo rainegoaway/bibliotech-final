@@ -12,6 +12,9 @@ router.use(authenticateToken);
 // GENRE MANAGEMENT (Public for logged-in users)
 // ============================================
 
+// GET /api/genres - Get all genres
+router.get('/', GenreController.getAllGenres);
+
 // GET /api/genres/:id - Get genre by ID
 router.get('/:id', GenreController.getGenreById);
 

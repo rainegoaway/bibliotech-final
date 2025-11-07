@@ -2,20 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import  api  from '../../src/services/api';
+import  api, { genresAPI }  from '../../src/services/api';
 import { getUserData, saveUserData } from '../../src/utils/storage';
 
 export default function FirstTimeSetup() {
   const router = useRouter();
-  const [step, setStep] = useState(1); // 1: change password, 2: select genres
+  const [step, setStep] = useState(1);
   
-  // Password change state
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   
-  // Genre selection state
   const [genres, setGenres] = useState<any[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [genresLoading, setGenresLoading] = useState(false);
@@ -33,16 +31,17 @@ export default function FirstTimeSetup() {
   const checkFirstLogin = async () => {
     const userData = await getUserData();
     if (!userData?.is_first_login) {
-      // Not first login, redirect to home
       router.replace('/student/home');
     }
   };
 
   const loadGenres = async () => {
     try {
-      const response = await api.get('/genres');
-      setGenres(response.data);
+      const response = await genresAPI.getAllGenres();
+      // FIX: Access response.data.genres instead of response.data
+      setGenres(response.data.genres || []);
     } catch (error) {
+      console.error('Load genres error:', error);
       Alert.alert('Error', 'Failed to load genres');
     }
   };
@@ -102,7 +101,6 @@ export default function FirstTimeSetup() {
         genreIds: selectedGenres
       });
       
-      // Update stored user data to reflect completion
       const userData = await getUserData();
       await saveUserData({
         ...userData,
@@ -191,7 +189,7 @@ export default function FirstTimeSetup() {
       </View>
 
       <ScrollView style={styles.genreScroll} contentContainerStyle={styles.genreContainer}>
-        {genres.map((genre) => {
+        {Array.isArray(genres) && genres.map((genre) => {
           const isSelected = selectedGenres.includes(genre.id);
           return (
             <TouchableOpacity
