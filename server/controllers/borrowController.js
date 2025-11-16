@@ -276,7 +276,7 @@ class BorrowController {
           });
         }
   
-        await Borrow.renew(connection, borrowId, 7);
+        await Borrow.renew(connection, borrowId, 1);
   
         // Re-fetch the borrow record to get the updated due_date and book title
         const updatedBorrow = await Borrow.findById(borrowId, connection);

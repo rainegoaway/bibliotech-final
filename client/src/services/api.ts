@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { getToken } from '../utils/storage';
 
-const API_URL = 'http://192.168.1.5:3000/api'; //change ip as needed (jru hyflex ip: 17.17.5.182, wifi: 14.14.8.202, home ip: 192.168.1.5)
+const API_URL = 'http://192.168.1.9:3000/api'; //change ip as needed (jru hyflex ip: 17.17.5.182, wifi: 14.14.8.202, home ip: 192.168.1.5)
+
 
 const api = axios.create({
   baseURL: API_URL,
